@@ -137,7 +137,7 @@ const LoginPage = () => {
           }`}
         />
 
-        <img src={logo} alt="Logo" className="w-[120px] z-10" />
+        <img src={logo} alt="Logo" className="w-[278px] z-10" />
         <section className="flex w-full flex-col items-center justify-center gap-2 z-10 max-w-[500px]">
           <div className="flex flex-col items-center justify-center">
             <h1 className="text-[32px] text-primary font-medium font-secondary">
