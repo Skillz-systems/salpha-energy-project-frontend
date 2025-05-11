@@ -13,7 +13,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom']
         }
       }
-    }
+    } 
   },
   server: {
     host: "0.0.0.0",

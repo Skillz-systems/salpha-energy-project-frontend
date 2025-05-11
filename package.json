@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "NODE_OPTIONS=--max-old-space-size=8192 vite build --debug",
-    "start": "NODE_OPTIONS=--max-old-space-size=8192 vite preview",
+    "start": "NODE_OPTIONS=--max-old-space-size=8192 vite preview --port 8080",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "jest",
