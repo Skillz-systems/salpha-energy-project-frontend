@@ -7,32 +7,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   build: {
     sourcemap: false,
-    lib: {
-      name: 'web-ui',
-      entry: resolve(__dirname, 'src/index.ts'),
-      fileName: 'web-ui',
-      formats: ['es']
-    },
     rollupOptions: {
-      maxParallelFileOps: 2,
-      cache: false,
-      external: ['react', 'react-dom'],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM'
-        },
-        sourcemap: true,
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-        },
-        inlineDynamicImports: false,
-        // sourcemapIgnoreList: (relativeSourcePath) => {
-        //   const normalizedPath = path.normalize(relativeSourcePath);
-        //   return normalizedPath.includes('node_modules');
-        // },
+        manualChunks: {
+          vendor: ['react', 'react-dom']
+        }
       }
     }
   },
