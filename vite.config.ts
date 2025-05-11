@@ -22,6 +22,7 @@ export default defineConfig({
       usePolling: true,
       followSymlinks: false,
     },
+    allowedHosts: true
   },
   plugins: [react(), tsconfigPaths()],
   resolve: {
