@@ -22,6 +22,7 @@ export default defineConfig({
       usePolling: true,
       followSymlinks: false,
     },
+    allowedHosts: ["plankton-app-v6zgk.ondigitalocean.app"],
   },
   preview: {
     host: "0.0.0.0",
