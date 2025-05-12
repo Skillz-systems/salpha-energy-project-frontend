@@ -9,6 +9,7 @@ import Products from "./Pages/Products";
 import Inventory from "./Pages/Inventory";
 import Devices from "./Pages/Devices";
 import Contracts from "./Pages/Contracts";
+import Support  from "./Pages/Support";
 import Settings from "./Pages/Settings";
 import LoginPage from "./Pages/LoginPage";
 import CreatePassword from "./Pages/CreatePassword";
@@ -19,6 +20,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ErrorBoundary } from "react-error-boundary";
 import ErrorPage from "./Pages/ErrorPage";
+import { Navigate } from "react-router-dom";
 
 function App() {
   return (
@@ -37,6 +39,8 @@ function App() {
             <Route path="/sales/*" element={<Sales />} />
             {/* <Route path="/transactions/*" element={<Transactions />} /> */}
             <Route path="/customers/*" element={<Customers />} />
+            <Route path="/support/*" element={<Support />} />
+            <Route path="/tickets/*" element={<Support />} />
             <Route path="/agents/*" element={<Agent />} />
             <Route path="/products/*" element={<Products />} />
             <Route path="/inventory/*" element={<Inventory />} />
