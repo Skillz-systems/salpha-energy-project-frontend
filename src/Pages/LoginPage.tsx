@@ -1,8 +1,8 @@
 import { Suspense, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import loginbg from "../assets/loginbg.png";
-import logo from "../assets/logo.svg";
+import salphaBg from "../assets/salphaBg.png";
+import salphalogo from "../assets/salphalogo.png";
 import eyeclosed from "../assets/eyeclosed.svg";
 import eyeopen from "../assets/eyeopen.svg";
 import { Input } from "../Components/InputComponent/Input";
@@ -130,17 +130,17 @@ const LoginPage = () => {
     >
       <main className="relative flex flex-col items-center justify-center gap-[60px] px-4 py-16 w-full min-h-screen">
         <img
-          src={loginbg}
+          src={salphaBg}
           alt="background"
           className={`absolute w-full h-full object-cover object-center ${
             formData.email || formData.password ? "opacity-60" : "opacity-40"
           }`}
         />
 
-        <img src={logo} alt="Logo" className="w-[120px] z-10" />
+        <img src={salphalogo} alt="Logo" className="w-[276.65px] z-10 h-[32px]" />
         <section className="flex w-full flex-col items-center justify-center gap-2 z-10 max-w-[500px]">
           <div className="flex flex-col items-center justify-center">
-            <h1 className="text-[32px] text-primary font-medium font-secondary">
+            <h1 className="text-[32px]  font-medium font-secondary">
               {isForgotPassword ? "See who forgot something" : "Welcome Back"}
             </h1>
             <em className="text-xs text-textDarkGrey text-center max-w-[220px]">

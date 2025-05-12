@@ -1,7 +1,7 @@
 version: '3.8'  # Define the version of Docker Compose
 
 services:
-  web:  # Define the web service
+  salpha-app:  # Define the web service
     build:
       context: .  # Specify the path to the build context (current directory)
       dockerfile: Dockerfile  # Specify the Dockerfile name (optional if it's named Dockerfile)
