@@ -1,0 +1,24 @@
+export interface TicketData {
+  subject: string;
+  category: string;
+  priority: "low" | "medium" | "high";
+  description: string;
+  type?: string;
+}
+
+export interface Ticket extends TicketData {
+  id: string | number;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  comments?: Comment[];
+  assignee?: string;
+  type?: string;
+}
+
+export interface Comment {
+  id: string | number;
+  user: string;
+  content: string;
+  createdAt: string;
+} 

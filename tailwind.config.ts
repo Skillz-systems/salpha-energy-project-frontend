@@ -42,7 +42,7 @@ export default {
         grape: "#EAD2D0",
       },
       backgroundImage: {
-        primaryGradient: "linear-gradient(to right, #982214, #F8CB48)",
+        primaryGradient: "linear-gradient(to right, #FADC4B,#C4A40A,#FCBA41, #FADC4B)",
         errorGradient: "linear-gradient(to right, #982214, #473b15)",
         inversedErrorGradient: "linear-gradient(to left, #982214, #473b15)",
         paleGrayGradient: "linear-gradient(to right, #F6F8FA, #FFFFFF)",

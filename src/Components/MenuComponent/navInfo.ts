@@ -8,7 +8,7 @@ import {
   ProductsIcon,
   InventoryIcon,
   ContractsIcon,
-  // SupportIcon,
+  SupportIcon,
   // CommunicationIcon,
   SettingsIcon,
 } from "./Icons";
@@ -64,12 +64,12 @@ export const navData = [
     icon: ContractsIcon,
     link: "/contracts",
   },
-  // {
-  //   title: "Support",
-  //   icon: SupportIcon,
-  //   link: "/support",
-  // },
-  // {
+  {
+    title: "Support",
+    icon: SupportIcon,
+    link: "/tickets",
+  },
+  // {  
   //   title: "Communication",
   //   icon: CommunicationIcon,
   //   link: "/communication",

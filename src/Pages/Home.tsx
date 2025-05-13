@@ -7,7 +7,7 @@ import agents from "@/assets/home/agents.svg";
 import products from "@/assets/home/products.svg";
 import inventory from "@/assets/home/inventory.svg";
 import contracts from "@/assets/home/contracts.svg";
-// import support from "@/assets/home/support.svg";
+import support from "@/assets/home/support.svg";
 // import communication from "@/assets/home/communication.svg";
 import settings from "@/assets/home/settings.svg";
 import useBreakpoint from "@/hooks/useBreakpoint";
@@ -65,7 +65,9 @@ const Home = () => {
       sectionImage: contracts,
       location: "/contracts",
     },
-    // { sectionName: "Support", sectionImage: support, location: "/support" },
+    { sectionName: "Support", 
+      sectionImage: support, 
+      location: "/support" },
     // {
     //   sectionName: "Communication",
     //   sectionImage: communication,
@@ -86,7 +88,7 @@ const Home = () => {
         {newHomeData.map((section) => (
           <div
             key={section.sectionName}
-            className="group flex flex-col items-center justify-between sm:justify-normal w-full max-w-[450px] h-max sm:h-[350px] px-[10px] py-[25px] sm:py-[20px] gap-2.5 border-[0.4px] border-strokeGreyTwo bg-white hover:border-strokeCream hover:cursor-pointer hover:bg-[#f6f7f8] transition-colors duration-300 ease-in-out"
+            className="group flex flex-col items-center justify-between sm:justify-normal w-full max-w-[450px] h-max sm:h-[350px] px-[10px] py-[25px] sm:py-[20px] gap-2.5 border-[0.4px] border-strokeGreyTwo bg-white hover:border-strokeCream hover:cursor-pointer hover:bg-[#FFFFFC] transition-colors duration-300 ease-in-out"
             onClick={() => {
               if (!isMobile) navigate(section.location);
             }}
