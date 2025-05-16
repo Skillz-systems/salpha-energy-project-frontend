@@ -54,11 +54,11 @@ export const navData = [
     icon: InventoryIcon,
     link: "/inventory",
   },
-  {
+ /* {
     title: "Devices",
     icon: InventoryIcon,
     link: "/devices",
-  },
+  }, */
  /* {
     title: "Contracts",
     icon: ContractsIcon,
