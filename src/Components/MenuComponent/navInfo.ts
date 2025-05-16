@@ -7,7 +7,7 @@ import {
   AgentsIcon,
   ProductsIcon,
   InventoryIcon,
-  ContractsIcon,
+ // ContractsIcon,
   SupportIcon,
   // CommunicationIcon,
   SettingsIcon,
@@ -54,16 +54,16 @@ export const navData = [
     icon: InventoryIcon,
     link: "/inventory",
   },
-  {
+ /* {
     title: "Devices",
     icon: InventoryIcon,
     link: "/devices",
-  },
-  {
+  }, */
+ /* {
     title: "Contracts",
     icon: ContractsIcon,
     link: "/contracts",
-  },
+  }, */
   {
     title: "Support",
     icon: SupportIcon,

@@ -4,7 +4,7 @@ import PageLayout from "./PageLayout";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import ActionButton from "@/Components/ActionButtonComponent/ActionButton";
 import circleAction from "../assets/settings/addCircle.svg";
-import customerbadge from "../assets/customers/customerbadge.png";
+import Customer from "../assets/customers/Customer.png";
 import cancelled from "../assets/cancelled.svg";
 import greencustomer from "../assets/customers/greencustomer.svg";
 import gradientcustomer from "../assets/customers/gradientcustomer.svg";
@@ -85,13 +85,18 @@ const Customers = () => {
 
   const navigationList = [
     {
-      title: "All Customers",
-      link: "/customers/all",
-      count: fetchCustomerStats?.data?.totalCustomerCount || 0,
-    },
-    {
       title: "Active Customers",
       link: "/customers/active",
+      count: fetchCustomerStats?.data?.activeCustomerCount || 0,
+    },
+    {
+      title: "New Customers",
+      link: "/customers/new",
+      count: fetchCustomerStats?.data?.activeCustomerCount || 0,
+    },
+    {
+      title: "Defaulting Customers",
+      link: "/customers/defaulting",
       count: fetchCustomerStats?.data?.activeCustomerCount || 0,
     },
     {
@@ -119,7 +124,7 @@ const Customers = () => {
 
   return (
     <>
-      <PageLayout pageName="Customers" badge={customerbadge}>
+      <PageLayout pageName="Customers" badge={Customer}>
         <section className="flex flex-col-reverse sm:flex-row items-center justify-between w-full bg-paleGrayGradient px-2 md:px-8 py-4 gap-2 min-h-[64px]">
           <div className="flex flex-wrap w-full items-center gap-2 gap-y-3">
             <TitlePill

@@ -7,12 +7,14 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import PageLayout from "./PageLayout";
-import transactionsbadge from "../assets/transactions/transactionsbadge.png";
+import salesbadge from "../assets/sales/salesbadge.png";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import ActionButton from "@/Components/ActionButtonComponent/ActionButton";
 // import { DropDown } from "@/Components/DropDownComponent/DropDown";
 import circleAction from "../assets/settings/addCircle.svg";
 import gradientsales from "../assets/sales/gradientsales.svg";
+import Green from "../assets/sales/Green.png";
+import Red from "../assets/sales/Red.png";
 import { SideMenu } from "@/Components/SideMenuComponent/SideMenu";
 import LoadingSpinner from "@/Components/Loaders/LoadingSpinner";
 import CreateNewSale from "@/Components/Sales/CreateNewSale";
@@ -88,6 +90,31 @@ const Sales = observer(() => {
       link: "/sales/all",
       count: salesData?.total || 0,
     },
+    {
+      title: "New Sales",
+      link: "/sales/new",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Contract",
+      link: "/sales/in contract",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Payment",
+      link: "/sales/in payment",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Installment",
+      link: "/sales/in installment",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "Closed",
+      link: "/sales/closed",
+      count: salesData?.total || 0,
+    },
   ];
 
   // const dropDownList = {
@@ -132,13 +159,27 @@ const Sales = observer(() => {
 
   return (
     <>
-      <PageLayout pageName="Sales" badge={transactionsbadge}>
+      <PageLayout pageName="Sales" badge={salesbadge}>
         <section className="flex flex-col-reverse sm:flex-row items-center justify-between w-full bg-paleGrayGradient px-2 md:px-8 py-4 gap-2 min-h-[64px]">
           <div className="flex flex-wrap w-full items-center gap-2 gap-y-3">
             <TitlePill
               icon={gradientsales}
               iconBgColor="bg-[#FDEEC2]"
               topText="All"
+              bottomText="SALES"
+              value={salesData?.total}
+            />
+            <TitlePill
+              icon={Red}
+              iconBgColor="bg-[#FDEEC2]"
+              topText="ACTIVE"
+              bottomText="SALES"
+              value={salesData?.total}
+            />
+            <TitlePill
+              icon={Green}
+              iconBgColor="bg-[#FDEEC2]"
+              topText="CANCELLED"
               bottomText="SALES"
               value={salesData?.total}
             />
