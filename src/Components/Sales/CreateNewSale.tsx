@@ -26,12 +26,11 @@ import {
 import { revalidateStore } from "@/utils/helpers";
 import SalesSummary from "./SalesSummary";
 import ApiErrorMessage from "../ApiErrorMessage";
-import { FlutterwaveConfig } from "flutterwave-react-v3/dist/types";
 import { toJS } from "mobx";
 
 const public_key =
-  import.meta.env.VITE_FLW_PUBLIC_KEY ||
-  "FLWPUBK_TEST-720d3bd8434091e9b28a01452ebdd2e0-X";
+  import.meta.env.PAYSTACK_PUBLIC_KEY ||
+  "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
 const base_url = import.meta.env.VITE_API_BASE_URL;
 
 type CreateSalesType = {
@@ -133,16 +132,20 @@ const CreateNewSale = observer(
 
         // Step 4: Handle save payment information
         const paymentData = response?.data?.paymentData;
-        const newPaymentData: FlutterwaveConfig = {
-          ...paymentData,
-          public_key,
-          redirect_url: `${base_url}/sales`,
-          customer: {
-            ...paymentData?.customer,
-            phone_number: SaleStore?.customer?.phone || "",
-            name: SaleStore.customer?.customerName || "",
+        const newPaymentData = {
+          publicKey: public_key,
+          email: SaleStore?.customer?.email || paymentData?.customer?.email || "",
+          amount: paymentData?.amount || 0,
+          currency: "NGN",
+          reference: paymentData?.reference || `sale_${Date.now()}`,
+          metadata: {
+            saleId: paymentData?.saleId || "",
+            customerName: SaleStore.customer?.customerName || "",
+            phoneNumber: SaleStore?.customer?.phone || "",
           },
+          channels: ["card", "bank", "ussd", "qr", "mobile_money"],
         };
+        
         if (paymentData?.amount) {
           SaleStore.addPaymentDetails(newPaymentData);
         }
@@ -235,7 +238,7 @@ const CreateNewSale = observer(
               >
                 {!summaryState
                   ? "New Sale"
-                  : !SaleStore.paymentDetails.tx_ref
+                  : !SaleStore.paymentDetails.reference
                   ? "Sale Summary"
                   : "Proceed to Payment"}
               </h2>

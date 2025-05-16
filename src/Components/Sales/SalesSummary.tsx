@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ProceedButton from "../ProceedButtonComponent/ProceedButtonComponent";
 import settingsicon from "../../assets/settings.svg";
 import producticon from "../../assets/product-grey.svg";
@@ -9,9 +9,14 @@ import { ProductDetailRow } from "./ProductSaleDisplay";
 import { IoReturnUpBack } from "react-icons/io5";
 import { formatNumberWithCommas } from "@/utils/helpers";
 import creditcardicon from "../../assets/creditcardgrey.svg";
-import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
-import { FlutterwaveConfig } from "flutterwave-react-v3/dist/types";
 import { toast } from "react-toastify";
+
+// Initialize Paystack inline
+declare global {
+  interface Window {
+    PaystackPop: any;
+  }
+}
 
 const SalesSummary = ({
   setSummaryState,
@@ -30,10 +35,9 @@ const SalesSummary = ({
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const paymentInfo = SaleStore.paymentDetails;
-  const handleFlutterPayment = useFlutterwave(paymentInfo as FlutterwaveConfig);
 
   const initializePayment = () => {
-    if (paymentInfo === null) {
+    if (!paymentInfo || !paymentInfo.publicKey) {
       setPaymentError("Payment details not found.");
       return;
     }
@@ -41,24 +45,38 @@ const SalesSummary = ({
     setPaymentLoading(true);
     setPaymentError(null);
 
-    handleFlutterPayment({
-      callback: (response) => {
-        console.log("Flutterwave Response:", response);
-        setPaymentLoading(false);
-        closePaymentModal();
-        toast.success("Payment Successful");
-      },
-      onClose: () => {
-        setPaymentLoading(false);
-        resetSaleModalState();
-        toast.info("Payment Cancelled");
-      },
-    });
+    try {
+      const handler = window.PaystackPop.setup({
+        key: paymentInfo.publicKey,
+        email: paymentInfo.email,
+        amount: paymentInfo.amount * 100, // Paystack expects amount in kobo (smallest unit)
+        currency: paymentInfo.currency,
+        ref: paymentInfo.reference,
+        metadata: paymentInfo.metadata,
+        channels: paymentInfo.channels,
+        onClose: () => {
+          setPaymentLoading(false);
+          resetSaleModalState();
+          toast.info("Payment Cancelled");
+        },
+        callback: (response: any) => {
+          console.log("Paystack Response:", response);
+          setPaymentLoading(false);
+          toast.success("Payment Successful");
+        }
+      });
+      
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack initialization error:", error);
+      setPaymentError("Failed to initialize payment. Please try again.");
+      setPaymentLoading(false);
+    }
   };
 
   return (
     <>
-      {!SaleStore.paymentDetails.tx_ref ? (
+      {!SaleStore.paymentDetails.reference ? (
         <>
           <div className="flex w-full">
             <p
@@ -187,9 +205,9 @@ const SalesSummary = ({
               <img src={creditcardicon} alt="Settings Icon" /> PAYMENT DETAILS
             </p>
             <div className="flex items-center justify-between">
-              <Tag name="Customer Name" />
+              <Tag name="Customer Email" />
               <div className="text-xs font-bold text-textDarkGrey">
-                <NameTag name={paymentInfo?.customer?.email || "N/A"} />
+                <NameTag name={paymentInfo?.email || "N/A"} />
               </div>
             </div>
             <ProductDetailRow
@@ -201,8 +219,8 @@ const SalesSummary = ({
               value={paymentInfo?.currency || ""}
             />
             <ProductDetailRow
-              label="Payment Description"
-              value={paymentInfo?.customizations?.description || ""}
+              label="Payment Reference"
+              value={paymentInfo?.reference || ""}
             />
           </div>
 
