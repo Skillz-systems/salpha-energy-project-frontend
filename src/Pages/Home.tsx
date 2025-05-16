@@ -31,7 +31,7 @@ const Home = () => {
     Products: 10,
     Inventory: 15,
     Devices: 10,
-    Contracts: 2,
+ //   Contracts: 2,
     Support: 3,
     Communication: 4,
     Settings: 0,
@@ -60,11 +60,11 @@ const Home = () => {
       sectionImage: inventory,
       location: "/devices",
     },
-    {
+  /*  {
       sectionName: "Contracts",
       sectionImage: contracts,
       location: "/contracts",
-    },
+    }, */
     { sectionName: "Support", 
       sectionImage: support, 
       location: "/support" },
