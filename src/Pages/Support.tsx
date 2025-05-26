@@ -4,7 +4,7 @@ import PageLayout from "./PageLayout";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import ActionButton from "@/Components/ActionButtonComponent/ActionButton";
 import circleAction from "../assets/settings/addCircle.svg";
-import customerbadge from "../assets/customers/customerbadge.png";
+import support from "../assets/customers/support.png";
 import cancelled from "../assets/cancelled.svg";
 import greencustomer from "../assets/customers/greencustomer.svg";
 import { DropDown } from "@/Components/DropDownComponent/DropDown";
@@ -117,7 +117,7 @@ const Support = () => {
 
   return (
     <>
-      <PageLayout pageName="Support" badge={customerbadge}>
+      <PageLayout pageName="Support" badge={support}>
         <section className="flex flex-col-reverse sm:flex-row items-center justify-between w-full bg-paleGrayGradient px-2 md:px-8 py-4 gap-2 min-h-[64px]">
           <div className="flex flex-wrap w-full items-center gap-2 gap-y-3">
             <TitlePill
