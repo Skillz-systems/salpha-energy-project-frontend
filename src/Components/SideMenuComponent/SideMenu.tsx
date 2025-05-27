@@ -9,11 +9,12 @@ export type SideMenuType = {
     count: number | null;
   }[];
   parentClass?: string;
+  bottomButton?: React.ReactNode;
 };
 
 export const SideMenu = (props: SideMenuType) => {
   const location = useLocation();
-  const { navigationList, parentClass } = props;
+  const { navigationList, parentClass, bottomButton } = props;
   useDefaultNavigation(navigationList);
 
   return (
@@ -54,6 +55,13 @@ export const SideMenu = (props: SideMenuType) => {
           ) : null}
         </Link>
       ))}
+      
+      {/* Bottom button section */}
+      {bottomButton && (
+        <div className="w-full mt-4 hidden sm:block">
+          {bottomButton}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,22 +1,36 @@
 import React from "react";
+import { useGetRequest } from "@/utils/useApiCall";
+import LoadingSpinner from "../Loaders/LoadingSpinner";
 
-const WarehouseHistory: React.FC = () => {
-  // Example history data
-  const history = [
-    { date: "2023-01-01", event: "Warehouse opened" },
-    { date: "2023-02-15", event: "Capacity increased" },
-  ];
+interface WarehouseHistoryProps {
+  warehouseId: string;
+}
+
+const WarehouseHistory: React.FC<WarehouseHistoryProps> = ({ warehouseId }) => {
+  const { data: historyData, isLoading } = useGetRequest(
+    `/v1/warehouses/${warehouseId}/history`,
+    !!warehouseId
+  );
+
+  const history = historyData?.data || [];
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">Warehouse History</h2>
-      <ul className="space-y-2">
-        {history.map((entry, index) => (
-          <li key={index}>
-            <strong>{entry.date}:</strong> {entry.event}
-          </li>
-        ))}
-      </ul>
+      
+      {isLoading ? (
+        <LoadingSpinner parentClass="py-4" />
+      ) : history.length > 0 ? (
+        <ul className="space-y-2">
+          {history.map((entry: any, index: number) => (
+            <li key={index}>
+              <strong>{new Date(entry.date || entry.createdAt).toLocaleDateString()}:</strong> {entry.event || entry.description || entry.action}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-500">No history records found for this warehouse.</p>
+      )}
     </div>
   );
 };
