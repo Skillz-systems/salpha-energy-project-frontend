@@ -27,8 +27,10 @@ import { revalidateStore } from "@/utils/helpers";
 import SalesSummary from "./SalesSummary";
 import ApiErrorMessage from "../ApiErrorMessage";
 import { toJS } from "mobx";
+import { getPaystackSettings } from "@/utils/paystackConfig";
 
 const public_key =
+  import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
   import.meta.env.PAYSTACK_PUBLIC_KEY ||
   "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
 const base_url = import.meta.env.VITE_API_BASE_URL;
@@ -50,6 +52,8 @@ export type ExtraInfoType =
   | "nextOfKin"
   | "guarantor"
   | "";
+
+const paystackSettings = getPaystackSettings();
 
 const CreateNewSale = observer(
   ({ isOpen, setIsOpen, allSalesRefresh }: CreateSalesType) => {
@@ -132,22 +136,32 @@ const CreateNewSale = observer(
 
         // Step 4: Handle save payment information
         const paymentData = response?.data?.paymentData;
+        
+        if (!paystackSettings.validation.valid) {
+          console.error("Paystack configuration error:", paystackSettings.validation.message);
+          setApiError("Payment system configuration error. Please contact support.");
+          return;
+        }
+        
         const newPaymentData = {
-          publicKey: public_key,
+          publicKey: paystackSettings.publicKey,
           email: SaleStore?.customer?.email || paymentData?.customer?.email || "",
           amount: paymentData?.amount || 0,
-          currency: "NGN",
+          currency: paystackSettings.currency,
           reference: paymentData?.reference || `sale_${Date.now()}`,
           metadata: {
             saleId: paymentData?.saleId || "",
             customerName: SaleStore.customer?.customerName || "",
             phoneNumber: SaleStore?.customer?.phone || "",
           },
-          channels: ["card", "bank", "ussd", "qr", "mobile_money"],
+          channels: paystackSettings.channels,
         };
         
-        if (paymentData?.amount) {
+        if (paymentData?.amount && paymentData?.amount > 0) {
           SaleStore.addPaymentDetails(newPaymentData);
+        } else {
+          // If no payment is required, just close the modal
+          resetSaleModalState();
         }
       } catch (error: any) {
         if (error instanceof z.ZodError) {

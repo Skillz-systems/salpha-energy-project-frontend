@@ -5,12 +5,10 @@ import { ApiErrorStatesType } from "../../utils/useApiCall";
 import { ErrorComponent } from "@/Pages/ErrorPage";
 import { formatNumberWithCommas } from "@/utils/helpers";
 import { DropDown } from "../DropDownComponent/DropDown";
-import MainWarehouse from "../../assets/warehouse/MainWarehouse.png";
-import LagosWarehouse from "../../assets/warehouse/LagosWarehouse.png";
-import AbujaWarehouse from "../../assets/warehouse/AbujaWarehouse.png";
-import SokotoWarehouse from "../../assets/warehouse/SokotoWarehouse.png";
 import { useNavigate } from "react-router-dom";
 import edit from "../../assets/edit.svg";
+import MainWarehouse from "../../assets/warehouse/mainWarehouse.png";
+import WarehouseDetailModal from "./WarehouseDetailModal";
 
 interface AllWarehouseEntries {
   id: string;
@@ -23,19 +21,70 @@ interface AllWarehouseEntries {
 }
 
 const generateWarehouseEntries = (data: any): AllWarehouseEntries[] => {
-  const entries: AllWarehouseEntries[] = (data?.updatedResults ?? []).map(
+  console.log("generateWarehouseEntries - input data:", data);
+  console.log("generateWarehouseEntries - data.data:", data?.data);
+  console.log("generateWarehouseEntries - data.warehouses:", data?.warehouses);
+  console.log("generateWarehouseEntries - data.results:", data?.results);
+  console.log("generateWarehouseEntries - data.items:", data?.items);
+  console.log("generateWarehouseEntries - all keys:", Object.keys(data || {}));
+  
+  // Try different possible array locations
+  let warehouseArray = data?.data || data?.warehouses || data?.results || data?.items || [];
+  
+  // If still empty but we have a total, the data might be directly in the response
+  if (warehouseArray.length === 0 && data?.total > 0) {
+    // Check if the data is directly in the response object
+    if (Array.isArray(data)) {
+      warehouseArray = data;
+    } else {
+      // Look for any array property in the response
+      const arrayKeys = Object.keys(data || {}).filter(key => Array.isArray(data[key]));
+      if (arrayKeys.length > 0) {
+        warehouseArray = data[arrayKeys[0]];
+        console.log(`Found array in key: ${arrayKeys[0]}`, warehouseArray);
+      }
+    }
+  }
+  
+  console.log("Final warehouseArray:", warehouseArray);
+  
+  const entries: AllWarehouseEntries[] = warehouseArray.map(
     (warehouse: any) => {
+      console.log("Processing warehouse:", warehouse);
+      console.log("Warehouse value fields:", {
+        totalValue: warehouse?.totalValue,
+        value: warehouse?.value,
+        inventoryValue: warehouse?.inventoryValue,
+        totalInventoryValue: warehouse?.totalInventoryValue,
+        worth: warehouse?.worth,
+        amount: warehouse?.amount,
+        allKeys: Object.keys(warehouse || {})
+      });
+      
+      // Try multiple possible value fields
+      const warehouseValue = warehouse?.totalValue || 
+                           warehouse?.value || 
+                           warehouse?.inventoryValue || 
+                           warehouse?.totalInventoryValue || 
+                           warehouse?.worth || 
+                           warehouse?.amount || 
+                           0;
+      
       return {
         id: warehouse?.id,
         name: warehouse?.name,
-        image: warehouse?.image || `src/assets/warehouse/${warehouse?.name?.toLowerCase().replace(/\s+/g, '')}.png`,
-        inventoryClass: warehouse?.category?.name || "",
+        image: warehouse?.image || MainWarehouse, // Default image if none provided
+        inventoryClass: Array.isArray(warehouse?.inventoryClasses) 
+          ? warehouse.inventoryClasses.join(", ") 
+          : warehouse?.inventoryClasses || warehouse?.category?.name || "General",
         capacity: warehouse?.capacity || 0,
         status: warehouse?.status || "ACTIVE",
-        value: warehouse?.priceRange?.minimumInventoryBatchPrice || 0,
+        value: warehouseValue,
       };
     }
   );
+  
+  console.log("generateWarehouseEntries - final entries:", entries);
   return entries;
 };
 
@@ -122,6 +171,12 @@ const WarehouseTable = ({
   const [queryValue, setQueryValue] = useState<string>("");
   const [isSearchQuery, setIsSearchQuery] = useState<boolean>(false);
 
+  // Debug logging
+  console.log("WarehouseTable - warehouseData:", warehouseData);
+  console.log("WarehouseTable - isLoading:", isLoading);
+  console.log("WarehouseTable - error:", error);
+  console.log("WarehouseTable - errorData:", errorData);
+
   const filterList = [
     {
       name: "Search",
@@ -149,16 +204,20 @@ const WarehouseTable = ({
   ];
 
   const dropDownList = {
-    items: ["View warehouse", "View Inventory Log", "Deactivate warehouse"],
+    items: ["View warehouse", "View Details", "View Inventory Log", "Deactivate warehouse"],
     onClickLink: (index: number, cardData: any) => {
       switch (index) {
         case 0:
           navigate(`/inventory?warehouseId=${cardData?.id}`);
           break;
         case 1:
-          console.log("View Inventory Log", cardData?.id);
+          setWarehouseId(cardData?.id);
+          setIsOpen(true);
           break;
         case 2:
+          console.log("View Inventory Log", cardData?.id);
+          break;
+        case 3:
           console.log("Deactivate warehouse", cardData?.id);
           break;
         default:
@@ -175,46 +234,8 @@ const WarehouseTable = ({
 
   // Create a pagination function that returns the correct structure
   const getPaginationInfo: PaginationType = () => {
-    return {
-      total: mockWarehouses.length,
-      currentPage: 1,
-      entriesPerPage: 10,
-      setCurrentPage: () => {},
-      setEntriesPerPage: () => {}
-    };
+    return paginationInfo();
   };
-
-  // Mock data for development without API
-  const mockWarehouses = [
-    {
-      id: "1",
-      name: "Main Warehouse",
-      value: 40000000,
-      status: "ACTIVE",
-      image: MainWarehouse
-    },
-    {
-      id: "2",
-      name: "Lagos Warehouse",
-      value: 10000000,
-      status: "ACTIVE",
-      image: LagosWarehouse
-    },
-    {
-      id: "3",
-      name: "Abuja Warehouse",
-      value: 5000000,
-      status: "ACTIVE",
-      image: AbujaWarehouse
-    },
-    {
-      id: "4",
-      name: "Sokoto Warehouse",
-      value: 2000000, 
-      status: "INACTIVE",
-      image: SokotoWarehouse
-    }
-  ];
 
   return (
     <>
@@ -224,11 +245,22 @@ const WarehouseTable = ({
             tableType="card"
             tableTitle="ALL WAREHOUSES"
             tableClassname="flex flex-wrap items-start justify-start gap-8"
-            tableData={warehouseData ? getTableData() : mockWarehouses}
+            tableData={warehouseData ? getTableData() : []}
             loading={isLoading}
             filterList={filterList}
             cardComponent={(data: any[]) => {
+              console.log("Card component - data:", data);
+              
+              if (!data || data.length === 0) {
+                return (
+                  <div className="w-full text-center py-8">
+                    <p className="text-gray-500">No warehouses found</p>
+                  </div>
+                );
+              }
+              
               return data?.map((warehouse: any, index: number) => {
+                console.log("Rendering warehouse card:", warehouse);
                 return (
                   <div
                     key={warehouse.id || index}
@@ -267,15 +299,14 @@ const WarehouseTable = ({
             paginationInfo={getPaginationInfo}
             clearFilters={() => setTableQueryParams({})}
           />
-          {/* Uncomment and implement the warehouse modal when ready */}
-          {/* {warehouseId && (
+          {warehouseId && (
             <WarehouseDetailModal
               isOpen={isOpen}
               setIsOpen={setIsOpen}
               warehouseID={warehouseId}
               refreshTable={refreshTable}
             />
-          )} */}
+          )}
         </div>
       ) : (
         <ErrorComponent

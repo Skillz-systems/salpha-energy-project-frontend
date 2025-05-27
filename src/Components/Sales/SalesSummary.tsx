@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ProceedButton from "../ProceedButtonComponent/ProceedButtonComponent";
 import settingsicon from "../../assets/settings.svg";
 import producticon from "../../assets/product-grey.svg";
@@ -10,12 +10,39 @@ import { IoReturnUpBack } from "react-icons/io5";
 import { formatNumberWithCommas } from "@/utils/helpers";
 import creditcardicon from "../../assets/creditcardgrey.svg";
 import { toast } from "react-toastify";
+import { useApiCall } from "@/utils/useApiCall";
+import { usePaystack } from "@/utils/usePaystack";
 
-// Initialize Paystack inline
+// Enhanced Paystack type definitions
 declare global {
   interface Window {
-    PaystackPop: any;
+    PaystackPop: {
+      setup: (config: PaystackConfig) => {
+        openIframe: () => void;
+      };
+    };
   }
+}
+
+interface PaystackConfig {
+  key: string;
+  email: string;
+  amount: number;
+  currency: string;
+  ref: string;
+  metadata?: Record<string, any>;
+  channels?: string[];
+  onClose: () => void;
+  callback: (response: PaystackResponse) => void;
+}
+
+interface PaystackResponse {
+  reference: string;
+  status: string;
+  trans: string;
+  transaction: string;
+  trxref: string;
+  redirecturl?: string;
 }
 
 const SalesSummary = ({
@@ -31,48 +58,120 @@ const SalesSummary = ({
   getIsFormFilled: () => boolean;
   apiErrorMessage: React.ReactNode;
 }) => {
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  const { apiCall } = useApiCall();
+  const { isReady, error: paystackError, loading: paymentLoading, initializePayment } = usePaystack();
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const paymentInfo = SaleStore.paymentDetails;
 
-  const initializePayment = () => {
+  // Verify payment with backend
+  const verifyPayment = async (reference: string) => {
+    try {
+      console.log('Verifying payment with reference:', reference);
+      
+      const response = await apiCall({
+        endpoint: "/v1/payment/verify/callback",
+        method: "post",
+        data: { reference },
+        showToast: false,
+      });
+
+      console.log('Payment verification response:', response);
+
+      // Check for successful verification
+      if (response?.data?.status === "success" || response?.status === "success") {
+        toast.success("Payment verified successfully!");
+        resetSaleModalState();
+        return true;
+      } else {
+        console.error("Payment verification failed - unexpected response:", response);
+        throw new Error("Payment verification failed - invalid response");
+      }
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+      
+      // More detailed error handling
+      if (error?.response?.status === 404) {
+        toast.error("Payment verification endpoint not found. Please contact support.");
+      } else if (error?.response?.status === 500) {
+        toast.error("Server error during payment verification. Please contact support.");
+      } else if (error?.response?.data?.message) {
+        toast.error(`Payment verification failed: ${error.response.data.message}`);
+      } else {
+        toast.error("Payment verification failed. Please contact support.");
+      }
+      
+      return false;
+    }
+  };
+
+  // Handle payment initialization
+  const handlePayment = useCallback(() => {
     if (!paymentInfo || !paymentInfo.publicKey) {
       setPaymentError("Payment details not found.");
       return;
     }
 
-    setPaymentLoading(true);
+    if (!paymentInfo.email || !paymentInfo.amount || !paymentInfo.reference) {
+      setPaymentError("Invalid payment information. Please check your details.");
+      return;
+    }
+
     setPaymentError(null);
 
-    try {
-      const handler = window.PaystackPop.setup({
-        key: paymentInfo.publicKey,
-        email: paymentInfo.email,
-        amount: paymentInfo.amount * 100, // Paystack expects amount in kobo (smallest unit)
-        currency: paymentInfo.currency,
-        ref: paymentInfo.reference,
-        metadata: paymentInfo.metadata,
-        channels: paymentInfo.channels,
-        onClose: () => {
-          setPaymentLoading(false);
-          resetSaleModalState();
-          toast.info("Payment Cancelled");
-        },
-        callback: (response: any) => {
-          console.log("Paystack Response:", response);
-          setPaymentLoading(false);
-          toast.success("Payment Successful");
+    const success = initializePayment({
+      key: paymentInfo.publicKey,
+      email: paymentInfo.email,
+      amount: paymentInfo.amount,
+      currency: paymentInfo.currency || "NGN",
+      ref: paymentInfo.reference,
+      metadata: {
+        ...paymentInfo.metadata,
+        custom_fields: [
+          {
+            display_name: "Sale ID",
+            variable_name: "sale_id",
+            value: paymentInfo.metadata?.saleId || "",
+          },
+          {
+            display_name: "Customer Name",
+            variable_name: "customer_name", 
+            value: paymentInfo.metadata?.customerName || "",
+          }
+        ]
+      },
+      channels: paymentInfo.channels,
+      onClose: () => {
+        toast.info("Payment was cancelled");
+      },
+      callback: async (response) => {
+        if (response.status === "success") {
+          // Verify payment with backend
+          const isVerified = await verifyPayment(response.reference);
+          if (!isVerified) {
+            setPaymentError("Payment completed but verification failed. Please contact support with reference: " + response.reference);
+          }
+        } else {
+          toast.error("Payment failed. Please try again.");
+          setPaymentError("Payment was not successful. Please try again.");
         }
-      });
-      
-      handler.openIframe();
-    } catch (error) {
-      console.error("Paystack initialization error:", error);
+      }
+    });
+
+    if (!success) {
       setPaymentError("Failed to initialize payment. Please try again.");
-      setPaymentLoading(false);
     }
-  };
+  }, [paymentInfo, initializePayment, verifyPayment]);
+
+  // Clear errors when payment info changes
+  useEffect(() => {
+    if (paymentInfo) {
+      setPaymentError(null);
+    }
+  }, [paymentInfo]);
+
+  // Combine errors from hook and local state
+  const displayError = paymentError || paystackError;
 
   return (
     <>
@@ -224,18 +323,18 @@ const SalesSummary = ({
             />
           </div>
 
-          {paymentError && (
+          {displayError && (
             <div className="p-3 mt-4 border border-red-500 rounded-md bg-red-50">
-              <p className="text-red-600 text-sm">{paymentError}</p>
+              <p className="text-red-600 text-sm">{displayError}</p>
             </div>
           )}
 
           <ProceedButton
             type="button"
-            onClick={initializePayment}
+            onClick={handlePayment}
             loading={paymentLoading}
             variant="gradient"
-            disabled={paymentLoading}
+            disabled={paymentLoading || !isReady}
           />
         </>
       )}
