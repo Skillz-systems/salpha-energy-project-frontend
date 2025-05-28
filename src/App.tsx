@@ -19,6 +19,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ErrorBoundary } from "react-error-boundary";
 import ErrorPage from "./Pages/ErrorPage";
+import WareHouses from "./Pages/WareHouses";
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
             <Route path="/devices/*" element={<Devices />} />
             <Route path="/contracts/*" element={<Contracts />} />
             <Route path="/settings/*" element={<Settings />} />
+            <Route path="/warehouses/*" element={<WareHouses />} />
             {/* Other protected routes */}
           </Route>
 

@@ -26,13 +26,9 @@ import {
 import { revalidateStore } from "@/utils/helpers";
 import SalesSummary from "./SalesSummary";
 import ApiErrorMessage from "../ApiErrorMessage";
-import { FlutterwaveConfig } from "flutterwave-react-v3/dist/types";
 import { toJS } from "mobx";
+import { getPaystackSettings } from "@/utils/paystackConfig";
 
-const public_key =
-  import.meta.env.VITE_FLW_PUBLIC_KEY ||
-  "FLWPUBK_TEST-720d3bd8434091e9b28a01452ebdd2e0-X";
-const base_url = import.meta.env.VITE_API_BASE_URL;
 
 type CreateSalesType = {
   isOpen: boolean;
@@ -51,6 +47,8 @@ export type ExtraInfoType =
   | "nextOfKin"
   | "guarantor"
   | "";
+
+const paystackSettings = getPaystackSettings();
 
 const CreateNewSale = observer(
   ({ isOpen, setIsOpen, allSalesRefresh }: CreateSalesType) => {
@@ -133,18 +131,32 @@ const CreateNewSale = observer(
 
         // Step 4: Handle save payment information
         const paymentData = response?.data?.paymentData;
-        const newPaymentData: FlutterwaveConfig = {
-          ...paymentData,
-          public_key,
-          redirect_url: `${base_url}/sales`,
-          customer: {
-            ...paymentData?.customer,
-            phone_number: SaleStore?.customer?.phone || "",
-            name: SaleStore.customer?.customerName || "",
+        
+        if (!paystackSettings.validation.valid) {
+          console.error("Paystack configuration error:", paystackSettings.validation.message);
+          setApiError("Payment system configuration error. Please contact support.");
+          return;
+        }
+        
+        const newPaymentData = {
+          publicKey: paystackSettings.publicKey,
+          email: SaleStore?.customer?.email || paymentData?.customer?.email || "",
+          amount: paymentData?.amount || 0,
+          currency: paystackSettings.currency,
+          reference: paymentData?.reference || `sale_${Date.now()}`,
+          metadata: {
+            saleId: paymentData?.saleId || "",
+            customerName: SaleStore.customer?.customerName || "",
+            phoneNumber: SaleStore?.customer?.phone || "",
           },
+          channels: paystackSettings.channels,
         };
-        if (paymentData?.amount) {
+        
+        if (paymentData?.amount && paymentData?.amount > 0) {
           SaleStore.addPaymentDetails(newPaymentData);
+        } else {
+          // If no payment is required, just close the modal
+          resetSaleModalState();
         }
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -235,7 +247,7 @@ const CreateNewSale = observer(
               >
                 {!summaryState
                   ? "New Sale"
-                  : !SaleStore.paymentDetails.tx_ref
+                  : !SaleStore.paymentDetails.reference
                   ? "Sale Summary"
                   : "Proceed to Payment"}
               </h2>
