@@ -53,7 +53,7 @@ const Home = () => {
     {
       sectionName: "Inventory",
       sectionImage: inventory,
-      location: "/inventory",
+      location: "/warehouses",
     },
     {
       sectionName: "Devices",

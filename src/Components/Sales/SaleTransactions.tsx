@@ -1,8 +1,6 @@
 import { CardComponent } from "../CardComponents/CardComponent";
 import { SaleTransactionsType } from "./SalesDetailsModal";
 import { toast } from "react-toastify";
-import { closePaymentModal, useFlutterwave } from "flutterwave-react-v3";
-import { FlutterwaveConfig } from "flutterwave-react-v3/dist/types";
 import { useCallback, useEffect, useState } from "react";
 
 type PaymentInfo = {
@@ -18,8 +16,8 @@ type PaymentInfo = {
 };
 
 const public_key =
-  import.meta.env.VITE_FLW_PUBLIC_KEY ||
-  "FLWPUBK_TEST-720d3bd8434091e9b28a01452ebdd2e0-X";
+  import.meta.env.PAYSTACK_PUBLIC_KEY ||
+  "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
 const base_url = import.meta.env.VITE_API_BASE_URL;
 
 const SaleTransactions = ({
@@ -35,33 +33,24 @@ const SaleTransactions = ({
     };
   };
 }) => {
-  const [paymentConfig, setPaymentConfig] = useState<FlutterwaveConfig>();
-
-  const handleFlutterPayment = useFlutterwave(
-    paymentConfig as FlutterwaveConfig
-  );
+  const [paymentConfig, setPaymentConfig] = useState<any>(null);
 
   const getPaymentInfoById = (paymentId: string) => {
     const selectedPaymentData = data?.paymentInfo?.find(
       (p) => p.id === paymentId
     );
 
-    const newPaymentData: FlutterwaveConfig = {
-      public_key,
-      tx_ref: selectedPaymentData?.transactionRef as string,
-      amount: selectedPaymentData?.amount as number,
+    const newPaymentData = {
+      key: public_key,
+      email: data.customer.email || "",
+      amount: (selectedPaymentData?.amount || 0) * 100, // Paystack uses kobo
       currency: "NGN",
-      redirect_url: `${base_url}/sales`,
-      payment_options: "banktransfer, card, ussd, account",
-      customer: data.customer,
-      customizations: {
-        title: "Product Purchase",
-        description: `Payment for sale ${selectedPaymentData?.saleId}`,
-        logo: "https://res.cloudinary.com/bluebberies/image/upload/v1726242207/Screenshot_2024-09-04_at_2.43.01_PM_fcjlf3.png",
-      },
-      meta: {
+      ref: selectedPaymentData?.transactionRef,
+      metadata: {
         saleId: selectedPaymentData?.saleId,
+        customerName: data.customer.name
       },
+      channels: ["card", "bank", "ussd", "qr", "mobile_money"],
     };
 
     setPaymentConfig(newPaymentData);
@@ -73,17 +62,24 @@ const SaleTransactions = ({
       return;
     }
 
-    handleFlutterPayment({
-      callback: (response) => {
-        console.log("Flutterwave Response:", response);
-        closePaymentModal();
-        toast.success("Payment Successful");
-      },
-      onClose: () => {
-        toast.info("Payment Cancelled");
-      },
-    });
-  }, [handleFlutterPayment, paymentConfig]);
+    try {
+      const handler = window.PaystackPop.setup({
+        ...paymentConfig,
+        callback: (response: any) => {
+          console.log("Paystack Response:", response);
+          toast.success("Payment Successful");
+        },
+        onClose: () => {
+          toast.info("Payment Cancelled");
+        },
+      });
+      
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack initialization error:", error);
+      toast.error("Failed to initialize payment. Please try again.");
+    }
+  }, [paymentConfig]);
 
   useEffect(() => {
     if (paymentConfig) {

@@ -53,15 +53,15 @@ const defaultValues: SnapshotIn<typeof saleStore> = {
     },
   },
   paymentDetails: {
-    public_key: "",
-    tx_ref: "",
+    publicKey: "",
+    email: "",
     amount: 0,
     currency: "NGN",
-    customer: { email: "", phone_number: "", name: "" },
-    customizations: { title: "", description: "", logo: "" },
-    meta: {},
-    redirect_url: "",
-    payment_options: "card, ussd, mobilemoney",
+    reference: "",
+    metadata: {},
+    callback: null,
+    onClose: null,
+    channels: ["card", "bank", "ussd", "qr", "mobile_money"],
   },
 };
 
@@ -194,19 +194,15 @@ const CustomizationsModel = types.model({
 });
 
 const PaymentDataModel = types.model({
-  public_key: types.string,
-  tx_ref: types.string,
+  publicKey: types.string,
+  email: types.string,
   amount: types.number,
   currency: types.string,
-  customer: types.model({
-    email: types.string,
-    phone_number: types.string,
-    name: types.string,
-  }),
-  customizations: CustomizationsModel,
-  meta: types.maybe(types.frozen()), // Accepts any JSON object
-  redirect_url: types.string,
-  payment_options: types.string,
+  reference: types.string,
+  metadata: types.maybe(types.frozen()), // Accepts any JSON object
+  callback: types.maybe(types.frozen()),
+  onClose: types.maybe(types.frozen()),
+  channels: types.array(types.string),
 });
 
 const saleStore = types
@@ -995,15 +991,15 @@ export const SaleStore = saleStore.create({
     },
   },
   paymentDetails: {
-    public_key: "",
-    tx_ref: "",
+    publicKey: "",
+    email: "",
     amount: 0,
     currency: "NGN",
-    customer: { email: "", phone_number: "", name: "" },
-    customizations: { title: "", description: "", logo: "" },
-    meta: {},
-    redirect_url: "",
-    payment_options: "card, ussd, mobilemoney",
+    reference: "",
+    metadata: {},
+    callback: null,
+    onClose: null,
+    channels: ["card", "bank", "ussd", "qr", "mobile_money"],
   },
 });
 
