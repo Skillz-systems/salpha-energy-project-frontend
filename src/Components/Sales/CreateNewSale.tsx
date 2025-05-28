@@ -29,11 +29,6 @@ import ApiErrorMessage from "../ApiErrorMessage";
 import { toJS } from "mobx";
 import { getPaystackSettings } from "@/utils/paystackConfig";
 
-const public_key =
-  import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
-  import.meta.env.PAYSTACK_PUBLIC_KEY ||
-  "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
-
 
 type CreateSalesType = {
   isOpen: boolean;
