@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import buttonIcon from "../../assets/menu/menu.svg";
 import { navData } from "./navInfo";
 
+
 export type MenuButtonType = {
   buttonStyle?: string;
   sections?: { title: string; icon: any; link: string }[];

@@ -33,12 +33,13 @@ const public_key =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
   import.meta.env.PAYSTACK_PUBLIC_KEY ||
   "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
-const base_url = import.meta.env.VITE_API_BASE_URL;
+
 
 type CreateSalesType = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   allSalesRefresh: KeyedMutator<any>;
+  
 };
 
 type FormData = z.infer<typeof formSchema>;
