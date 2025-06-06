@@ -144,7 +144,7 @@ const CreateNewSale = observer(
           email: SaleStore?.customer?.email || paymentData?.customer?.email || "",
           amount: paymentData?.amount || 0,
           currency: paystackSettings.currency,
-          reference: paymentData?.reference || `sale_${Date.now()}`,
+          reference: paymentData?.reference || paymentData.tx_ref || `sale_${Date.now()}`,
           metadata: {
             saleId: paymentData?.saleId || "",
             customerName: SaleStore.customer?.customerName || "",
