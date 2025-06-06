@@ -7,18 +7,21 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import PageLayout from "./PageLayout";
-import transactionsbadge from "../assets/transactions/transactionsbadge.png";
+import salesbadge from "../assets/sales/salesbadge.png";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import ActionButton from "@/Components/ActionButtonComponent/ActionButton";
-// import { DropDown } from "@/Components/DropDownComponent/DropDown";
+import { DropDown } from "@/Components/DropDownComponent/DropDown"; 
 import circleAction from "../assets/settings/addCircle.svg";
 import gradientsales from "../assets/sales/gradientsales.svg";
+import Green from "../assets/sales/Green.png";
+import Red from "../assets/sales/Red.png";
 import { SideMenu } from "@/Components/SideMenuComponent/SideMenu";
 import LoadingSpinner from "@/Components/Loaders/LoadingSpinner";
 import CreateNewSale from "@/Components/Sales/CreateNewSale";
 import { useGetRequest, useApiCall } from "@/utils/useApiCall";
 import { observer } from "mobx-react-lite";
 import { SaleStore } from "@/stores/SaleStore";
+import BatchUploadSales from "@/Components/Sales/BatchUploadSales";
 
 const SalesTable = lazy(() => import("@/Components/Sales/SalesTable"));
 
@@ -33,6 +36,8 @@ const Sales = observer(() => {
     string,
     any
   > | null>({});
+  
+  const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
 
   const queryString = Object.entries(tableQueryParams || {})
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
@@ -45,8 +50,7 @@ const Sales = observer(() => {
     error: allSalesError,
     errorStates: allSalesErrorStates,
   } = useGetRequest(
-    `/v1/sales?page=${currentPage}&limit=${entriesPerPage}${
-      queryString && `&${queryString}`
+    `/v1/sales?page=${currentPage}&limit=${entriesPerPage}${queryString && `&${queryString}`
     }`,
     true,
     60000
@@ -88,21 +92,46 @@ const Sales = observer(() => {
       link: "/sales/all",
       count: salesData?.total || 0,
     },
+    {
+      title: "New Sales",
+      link: "/sales/new",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Contract",
+      link: "/sales/in contract",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Payment",
+      link: "/sales/in payment",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "In Installment",
+      link: "/sales/in installment",
+      count: salesData?.total || 0,
+    },
+    {
+      title: "Closed",
+      link: "/sales/closed",
+      count: salesData?.total || 0,
+    },
   ];
 
-  // const dropDownList = {
-  //   items: ["Export List"],
-  //   onClickLink: (index: number) => {
-  //     switch (index) {
-  //       case 0:
-  //         console.log("Exporting list...");
-  //         break;
-  //       default:
-  //         break;
-  //     }
-  //   },
-  //   showCustomButton: true,
-  // };
+  const dropDownList = {
+    items: ["Batch Upload Sales"],  // Changed to be sales-specific
+    onClickLink: (index: number) => {
+      switch (index) {
+        case 0:
+          setIsBatchOpen(true);
+          break;
+        default:
+          break;
+      }
+    },
+    showCustomButton: true,
+  };
 
   const salesPaths = ["all"];
 
@@ -132,7 +161,7 @@ const Sales = observer(() => {
 
   return (
     <>
-      <PageLayout pageName="Sales" badge={transactionsbadge}>
+      <PageLayout pageName="Sales" badge={salesbadge}>
         <section className="flex flex-col-reverse sm:flex-row items-center justify-between w-full bg-paleGrayGradient px-2 md:px-8 py-4 gap-2 min-h-[64px]">
           <div className="flex flex-wrap w-full items-center gap-2 gap-y-3">
             <TitlePill
@@ -142,16 +171,30 @@ const Sales = observer(() => {
               bottomText="SALES"
               value={salesData?.total}
             />
+            <TitlePill
+              icon={Red}
+              iconBgColor="bg-[#FDEEC2]"
+              topText="ACTIVE"
+              bottomText="SALES"
+              value={salesData?.total}
+            />
+            <TitlePill
+              icon={Green}
+              iconBgColor="bg-[#FDEEC2]"
+              topText="CANCELLED"
+              bottomText="SALES"
+              value={salesData?.total}
+            />
           </div>
           <div className="flex w-full items-center justify-between gap-2 min-w-max sm:w-max sm:justify-end">
             <ActionButton
-              label="New Sale"
+              label="New Sales"
               icon={<img src={circleAction} />}
               onClick={() => {
                 setIsOpen(true);
               }}
             />
-            {/* <DropDown {...dropDownList} /> */}
+            <DropDown {...dropDownList} />
           </div>
         </section>
         <div className="flex flex-col w-full px-2 py-8 gap-4 lg:flex-row md:p-8">
@@ -192,6 +235,12 @@ const Sales = observer(() => {
       <CreateNewSale
         isOpen={isOpen}
         setIsOpen={setIsOpen}
+        allSalesRefresh={allSalesRefresh}
+      />
+
+      <BatchUploadSales
+        isOpen={isBatchOpen}
+        setIsOpen={setIsBatchOpen}
         allSalesRefresh={allSalesRefresh}
       />
     </>

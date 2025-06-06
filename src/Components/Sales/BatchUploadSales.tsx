@@ -122,12 +122,11 @@ const BatchUploadSales: React.FC<BatchUploadSalesProps> = ({
                         label="Sales File"
                         onChange={handleFileChange}
                         required={true}
-                        accept=".csv,.xlsx,.xls"  
                         placeholder="Upload Sales File"
                         errorMessage={getFieldError("salesFile")}
                         iconRight={<RxFilePlus color="black" title="Upload File" />}
                         description="Accepted formats: .csv, .xlsx, .xls"
-                    />
+
 
                     <ApiErrorMessage apiError={apiError} />
 

@@ -67,6 +67,11 @@ const Settings = () => {
       count: null,
     },
     {
+      title: "Inventory Settings",
+      link: "/settings/inventory-settings",
+      count: null,
+    },
+    {
       title: "Change Password",
       link: "/settings/change-password",
       count: null,

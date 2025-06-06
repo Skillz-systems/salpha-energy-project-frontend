@@ -34,6 +34,7 @@ type CreateSalesType = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   allSalesRefresh: KeyedMutator<any>;
+  
 };
 
 type FormData = z.infer<typeof formSchema>;

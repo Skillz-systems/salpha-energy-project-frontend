@@ -18,9 +18,9 @@
     "@paystack/inline-js": "^2.22.4",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
-    "flutterwave-react-v3": "^1.3.2",
     "i": "^0.3.7",
     "js-cookie": "^2.2.1",
+    "lodash": "^4.17.21",
     "mobx": "^6.13.3",
     "mobx-react": "^9.1.1",
     "mobx-react-lite": "^4.0.7",
@@ -31,7 +31,6 @@
     "react-dom": "^18.3.1",
     "react-error-boundary": "^4.1.2",
     "react-icons": "^5.3.0",
-    "react-paystack": "^6.0.0",
     "react-pdf": "^9.2.1",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^10.0.5",
@@ -82,7 +81,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1",
+    "vite": "^5.4.19",
     "vite-tsconfig-paths": "^5.1.2"
   },
   "eslintConfig": {
