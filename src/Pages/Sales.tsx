@@ -112,11 +112,11 @@ const Sales = observer(() => {
   const verifyPayment = useCallback(async () => {
     try {
       apiCall({
-        endpoint: "/v1/payment/verify/callback",
+        endpoint: `/v1/payment/verify/callback?txref=${tx_ref_param}&transactionid=${transaction_id}`,
         method: "get",
         params: {
-          tx_ref: tx_ref_param,
-          transaction_id: transaction_id,
+          txref: tx_ref_param,
+          transactionid: transaction_id,
         },
         showToast: false,
       });
