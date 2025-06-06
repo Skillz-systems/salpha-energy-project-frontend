@@ -68,11 +68,10 @@ const SalesSummary = ({
   const verifyPayment = async (reference: string) => {
     try {
       console.log('Verifying payment with reference:', reference);
-      
+
       const response = await apiCall({
-        endpoint: "/v1/payment/verify/callback",
-        method: "post",
-        data: { reference },
+        endpoint: `/v1/payment/verify/callback?txref=${reference}`,
+        method: "get",
         showToast: false,
       });
 
@@ -89,7 +88,7 @@ const SalesSummary = ({
       }
     } catch (error: any) {
       console.error("Payment verification error:", error);
-      
+
       // More detailed error handling
       if (error?.response?.status === 404) {
         toast.error("Payment verification endpoint not found. Please contact support.");
@@ -100,7 +99,7 @@ const SalesSummary = ({
       } else {
         toast.error("Payment verification failed. Please contact support.");
       }
-      
+
       return false;
     }
   };
@@ -135,7 +134,7 @@ const SalesSummary = ({
           },
           {
             display_name: "Customer Name",
-            variable_name: "customer_name", 
+            variable_name: "customer_name",
             value: paymentInfo.metadata?.customerName || "",
           }
         ]

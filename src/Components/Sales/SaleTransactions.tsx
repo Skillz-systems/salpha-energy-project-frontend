@@ -44,9 +44,8 @@ const SaleTransactions = ({
       console.log('Verifying payment with reference:', reference);
       
       const response = await apiCall({
-        endpoint: "/v1/payment/verify/callback",
-        method: "post",
-        data: { reference },
+        endpoint: `/v1/payment/verify/callback?txref=${reference}`,
+        method: "get",
         showToast: false,
       });
 

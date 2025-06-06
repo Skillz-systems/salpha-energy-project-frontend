@@ -18,6 +18,7 @@ type SalesEntries = {
   paymentMode: string;
   dateCreated: string;
   customer: string;
+  transactionDate: string;
   status: string;
   amount: number;
 };
@@ -37,6 +38,7 @@ const generateSalesEntries = (data: any): SalesEntries[] => {
             : item?.paymentMode,
         dateCreated: item?.createdAt,
         customer: customerName,
+        transactionDate: item?.sale?.transactionDate,
         status: item?.sale?.status,
         amount: item?.sale?.totalPrice,
       };
