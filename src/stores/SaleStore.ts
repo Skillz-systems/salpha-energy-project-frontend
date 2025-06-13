@@ -63,6 +63,7 @@ const defaultValues: SnapshotIn<typeof saleStore> = {
     onClose: null,
     channels: ["card", "bank", "ussd", "qr", "mobile_money"],
   },
+  paymentMethod: "ONLINE",
 };
 
 const IdentificationDetailsModel = types.model({
@@ -222,6 +223,7 @@ const saleStore = types
     nextOfKinDetails: NextOfKinDetailsModel,
     guarantorDetails: GuarantorDetailsModel,
     paymentDetails: PaymentDataModel,
+    paymentMethod: types.enumeration(["ONLINE", "CASH"]),
   })
   .actions((self) => ({
     addSaleItem(productId: string) {
@@ -541,41 +543,6 @@ const saleStore = types
         }
       });
     },
-    // addOrUpdateTentativeDevices(
-    //   currentProductId: string,
-    //   deviceList: string[]
-    // ) {
-    //   const existingIndex = self.tentativeDevices.findIndex(
-    //     (d) => d.currentProductId === currentProductId
-    //   );
-
-    //   // Normalize all device IDs to strings
-    //   const normalizedDevices = deviceList.map((d) => String(d));
-
-    //   if (existingIndex !== -1) {
-    //     // Get current devices and merge with new ones
-    //     const currentDevices = [
-    //       ...self.tentativeDevices[existingIndex].devices,
-    //     ];
-    //     const mergedDevices = [
-    //       ...new Set([...currentDevices, ...normalizedDevices]),
-    //     ];
-
-    //     // Use put to update the array in a MobX-friendly way
-    //     self.tentativeDevices[existingIndex].devices.clear();
-    //     mergedDevices.forEach((deviceId) => {
-    //       self.tentativeDevices[existingIndex].devices.push(deviceId);
-    //     });
-    //   } else {
-    //     // Create new entry with normalized devices
-    //     self.tentativeDevices.push(
-    //       TentativeDevicesModel.create({
-    //         currentProductId,
-    //         devices: normalizedDevices,
-    //       })
-    //     );
-    //   }
-    // },
     addOrUpdateTentativeDevices(
       currentProductId: string,
       deviceList: string[],
@@ -652,12 +619,6 @@ const saleStore = types
         self.tentativeDevices.push(TentativeDevicesModel.create(newEntry));
       }
     },
-    // getSelectedTentativeDevices(productId: string) {
-    //   const devices = self.tentativeDevices.find(
-    //     (d) => d.currentProductId === productId
-    //   )?.devices;
-    //   return devices;
-    // },
     getAllTentativeDevices(productId: string) {
       const productEntry = self.tentativeDevices.find(
         (d) => d.currentProductId === productId
@@ -683,33 +644,6 @@ const saleStore = types
       // Default to all devices for product
       return [...productEntry.devices];
     },
-    // removeSingleTentativeDevice(
-    //   currentProductId: string,
-    //   deviceIdToRemove: string
-    // ) {
-    //   const existingIndex = self.tentativeDevices.findIndex(
-    //     (d) => d.currentProductId === currentProductId
-    //   );
-
-    //   if (existingIndex !== -1) {
-    //     // Filter out the specific device ID
-    //     const updatedDevices = self.tentativeDevices[
-    //       existingIndex
-    //     ].devices.filter((deviceId) => deviceId !== deviceIdToRemove);
-
-    //     // Update the devices array
-    //     self.tentativeDevices[existingIndex].devices.replace(updatedDevices);
-
-    //     // If no devices left, remove the entire entry
-    //     if (updatedDevices.length === 0) {
-    //       self.tentativeDevices.replace(
-    //         self.tentativeDevices.filter(
-    //           (d) => d.currentProductId !== currentProductId
-    //         )
-    //       );
-    //     }
-    //   }
-    // },
     removeSingleTentativeDevice(
       currentProductId: string,
       deviceIdToRemove: string,
@@ -762,13 +696,6 @@ const saleStore = types
         }
       }
     },
-    // removeTentativeDevices(currentProductId?: string) {
-    //   self.tentativeDevices.replace(
-    //     self.tentativeDevices.filter(
-    //       (d) => d.currentProductId !== currentProductId
-    //     )
-    //   );
-    // },
     removeTentativeDevices(currentProductId?: string, inventoryId?: string) {
       if (!currentProductId) return;
 
@@ -939,8 +866,81 @@ const saleStore = types
     addPaymentDetails(data: any) {
       self.paymentDetails = data;
     },
+    setPaymentMethod(method: "ONLINE" | "CASH") {
+      self.paymentMethod = method;
+    },
     purgeStore() {
       applySnapshot(self, defaultValues);
+    },
+    getPayload() {
+      const formatDate = (dateString: string) => {
+        if (!dateString) return "";
+        // If it's an ISO string, extract just the date part
+        if (dateString.includes('T')) {
+          return dateString.split('T')[0];
+        }
+        return dateString;
+      };
+
+      const payload: any = {
+        category: self.category,
+        customerId: self.customer?.customerId,
+        saleItems: this.getTransformedSaleItems(),
+        paymentMethod: self.paymentMethod,
+        applyMargin: true, // Default to true as per schema
+      };
+
+      // If any sale item has installment payment mode, include additional required fields
+      if (this.doesSaleItemHaveInstallment()) {
+        // BVN will be provided by the CreateNewSale component
+        // We don't set it here as it's not stored in the store
+        
+        // Format identification details with proper date formatting
+        const identificationDetails = toJS(self.identificationDetails);
+        payload.identificationDetails = {
+          ...identificationDetails,
+          issueDate: formatDate(identificationDetails.issueDate),
+          expirationDate: formatDate(identificationDetails.expirationDate),
+        };
+        
+        // Format next of kin details with proper date formatting
+        const nextOfKinDetails = toJS(self.nextOfKinDetails);
+        payload.nextOfKinDetails = {
+          ...nextOfKinDetails,
+          dateOfBirth: formatDate(nextOfKinDetails.dateOfBirth),
+        };
+        
+        // Format guarantor details with proper date formatting
+        const guarantorDetails = toJS(self.guarantorDetails);
+        payload.guarantorDetails = {
+          ...guarantorDetails,
+          dateOfBirth: formatDate(guarantorDetails.dateOfBirth),
+          identificationDetails: {
+            ...guarantorDetails.identificationDetails,
+            issueDate: formatDate(guarantorDetails.identificationDetails.issueDate),
+            expirationDate: formatDate(guarantorDetails.identificationDetails.expirationDate),
+          },
+        };
+      }
+
+      return payload;
+    },
+    getTotal() {
+      return self.products.reduce((total, product) => {
+        const baseAmount = Number(product.productPrice) * (product.productUnits || 1);
+        
+        // Get parameters for discount calculation
+        const params = self.parameters.find(p => p.currentProductId === product.productId);
+        const discount = params?.params?.discount || 0;
+        const discountAmount = (baseAmount * discount) / 100;
+        
+        // Get miscellaneous costs
+        const miscPrices = self.miscellaneousPrices.find(m => m.currentProductId === product.productId);
+        const miscellaneousCosts = miscPrices ? 
+          Array.from(miscPrices.costs.entries()).reduce((sum, [, cost]) => sum + cost, 0) : 0;
+        
+        return total + baseAmount - discountAmount + miscellaneousCosts;
+      }, 0);
     },
   }));
 
@@ -1001,6 +1001,7 @@ export const SaleStore = saleStore.create({
     onClose: null,
     channels: ["card", "bank", "ussd", "qr", "mobile_money"],
   },
+  paymentMethod: "ONLINE",
 });
 
 export type SaleStoreType = Instance<typeof saleStore>;

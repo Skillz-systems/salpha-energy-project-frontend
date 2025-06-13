@@ -12,6 +12,7 @@ import creditcardicon from "../../assets/creditcardgrey.svg";
 import { toast } from "react-toastify";
 import { useApiCall } from "@/utils/useApiCall";
 import { usePaystack } from "@/utils/usePaystack";
+import PaymentModeSelector from "./PaymentModeSelector";
 
 // Enhanced Paystack type definitions
 declare global {
@@ -45,24 +46,136 @@ interface PaystackResponse {
   redirecturl?: string;
 }
 
+interface PaymentVerificationResponse {
+  status?: string;
+  message?: string;
+  jobId?: string;
+  paymentStatus?: "PENDING" | "COMPLETED";
+  amount?: number;
+}
+
 const SalesSummary = ({
   setSummaryState,
   resetSaleModalState,
   loading,
   getIsFormFilled,
   apiErrorMessage,
+  payload,
 }: {
   setSummaryState: React.Dispatch<React.SetStateAction<boolean>>;
   resetSaleModalState: () => void;
   loading: boolean;
   getIsFormFilled: () => boolean;
   apiErrorMessage: React.ReactNode;
+  payload: any;
 }) => {
   const { apiCall } = useApiCall();
   const { isReady, error: paystackError, loading: paymentLoading, initializePayment } = usePaystack();
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const paymentInfo = SaleStore.paymentDetails;
+
+  // Handle cash payment
+  const handleCashPayment = async () => {
+    setIsSubmitting(true);
+    try {
+      // Create a fresh payload with current payment method
+      const freshPayload = {
+        ...payload,
+        paymentMethod: SaleStore.paymentMethod, // Use current payment method from store
+      };
+      
+      console.log('Creating sale with fresh payload:', freshPayload);
+      
+      const saleResponse = await apiCall({
+        endpoint: "/v1/sales/create",
+        method: "post",
+        data: freshPayload,
+        successMessage: "Sale created successfully!",
+      });
+
+      console.log('Sale creation response:', saleResponse);
+
+      if (saleResponse.data) {
+        // Get the sale ID from the response
+        const saleId = saleResponse.data.sale?.id;
+        const totalAmount = saleResponse.data.paymentData?.amount;
+        
+        console.log('Extracted saleId:', saleId);
+        console.log('Extracted total amount from API:', totalAmount);
+        console.log('Full response data:', saleResponse.data);
+        
+        if (!saleId) {
+          console.error('No sale ID found in response:', saleResponse);
+          throw new Error("No sale ID received from sale creation");
+        }
+
+        if (!totalAmount) {
+          console.error('No amount found in response:', saleResponse);
+          throw new Error("No amount received from sale creation");
+        }
+
+        // Get the actual payment amount from the PaymentModeSelector (or use total if not set)
+        const paymentAmount = SaleStore.paymentDetails?.amount || totalAmount;
+        
+        console.log('Payment amount:', paymentAmount);
+        console.log('Total amount:', totalAmount);
+
+        // Check if this is an installment payment - use paymentMode instead of installmentDuration
+        const isInstallment = SaleStore.products.some(item => {
+          const params = SaleStore.getParametersByProductId(item?.productId);
+          return params?.paymentMode === "INSTALLMENT";
+        });
+
+        // Check if payment amount is less than total amount
+        const isPartialPayment = paymentAmount < totalAmount;
+
+        console.log('Is installment payment:', isInstallment);
+        console.log('Is partial payment:', isPartialPayment);
+
+        // Determine payment status
+        const paymentStatus = (isInstallment || isPartialPayment) ? "INCOMPLETE" : "COMPLETED";
+        
+        console.log('Payment status will be set to:', paymentStatus);
+
+        // Then record the cash payment
+        console.log('Recording cash payment with saleId:', saleId, 'and amount:', paymentAmount);
+        const paymentResponse = await apiCall({
+          endpoint: "/v1/sales/record-cash-payment",
+          method: "post",
+          data: {
+            saleId: String(saleId),
+            paymentMethod: "CASH",
+            amount: paymentAmount,
+            status: paymentStatus
+          },
+          successMessage: (isInstallment || isPartialPayment) ? "Initial payment recorded successfully!" : "Cash payment completed successfully!",
+        });
+
+        console.log('Cash payment response:', paymentResponse);
+
+        if (paymentResponse.data) {
+          toast.success((isInstallment || isPartialPayment) ? "Initial payment recorded successfully!" : "Cash payment completed successfully!");
+          resetSaleModalState();
+        }
+      }
+    } catch (error: any) {
+      console.error("Error processing cash payment:", error);
+      console.error("Error details:", {
+        response: error.response?.data,
+        status: error.response?.status,
+        message: error.response?.data?.message
+      });
+      const errorMessage = error.response?.data?.message || 
+                          (Array.isArray(error.response?.data?.message) ? 
+                            error.response?.data?.message[0] : 
+                            "Failed to process cash payment. Please try again.");
+      setPaymentError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Verify payment with backend
   const verifyPayment = async (reference: string) => {
@@ -73,13 +186,54 @@ const SalesSummary = ({
         endpoint: `/v1/payment/verify/callback?txref=${reference}`,
         method: "get",
         showToast: false,
-      });
+      }) as { data: PaymentVerificationResponse };
 
       console.log('Payment verification response:', response);
 
-      // Check for successful verification
-      if (response?.data?.status === "success" || response?.status === "success") {
-        toast.success("Payment verified successfully!");
+      if (response?.data?.status === "success" || 
+          response?.data?.status === "processing") {
+        if (response?.data?.paymentStatus === "COMPLETED") {
+          // Check if this is an installment payment - use paymentMode instead of installmentDuration
+          const isInstallment = SaleStore.products.some(item => {
+            const params = SaleStore.getParametersByProductId(item?.productId);
+            return params?.paymentMode === "INSTALLMENT";
+          });
+
+          // Get the total amount that should be paid (from store's calculation)
+          const totalAmount = SaleStore.paymentDetails?.amount || 0;
+          // Get the actual payment amount from Paystack response
+          const paymentAmount = response.data.amount || totalAmount;
+          const isPartialPayment = paymentAmount < totalAmount;
+
+          console.log('Online payment - Total amount:', totalAmount);
+          console.log('Online payment - Payment amount:', paymentAmount);
+          console.log('Online payment - Is installment:', isInstallment);
+          console.log('Online payment - Is partial:', isPartialPayment);
+
+          // Record the online payment completion
+          try {
+            const paymentResponse = await apiCall({
+              endpoint: "/v1/sales/record-cash-payment",
+              method: "post",
+              data: {
+                saleId: paymentInfo.metadata?.saleId,
+                paymentMethod: "ONLINE",
+                amount: paymentAmount,
+                status: (isInstallment || isPartialPayment) ? "INCOMPLETE" : "COMPLETED"
+              },
+              successMessage: (isInstallment || isPartialPayment) ? "Initial payment recorded successfully!" : "Payment recorded successfully!"
+            });
+            console.log('Payment record response:', paymentResponse);
+          } catch (recordError) {
+            console.error("Failed to record payment:", recordError);
+            toast.error("Payment completed but failed to record. Please contact support.");
+          }
+          
+          toast.success((isInstallment || isPartialPayment) ? "Initial payment completed successfully!" : "Payment completed successfully!");
+        } else {
+          toast.success(response?.data?.message || "Payment verification initiated successfully!");
+        }
+        
         resetSaleModalState();
         return true;
       } else {
@@ -89,7 +243,6 @@ const SalesSummary = ({
     } catch (error: any) {
       console.error("Payment verification error:", error);
 
-      // More detailed error handling
       if (error?.response?.status === 404) {
         toast.error("Payment verification endpoint not found. Please contact support.");
       } else if (error?.response?.status === 500) {
@@ -106,13 +259,8 @@ const SalesSummary = ({
 
   // Handle payment initialization
   const handlePayment = useCallback(() => {
-    if (!paymentInfo || !paymentInfo.publicKey) {
-      setPaymentError("Payment details not found.");
-      return;
-    }
-
-    if (!paymentInfo.email || !paymentInfo.amount || !paymentInfo.reference) {
-      setPaymentError("Invalid payment information. Please check your details.");
+    if (SaleStore.paymentMethod === "CASH") {
+      handleCashPayment();
       return;
     }
 
@@ -145,7 +293,6 @@ const SalesSummary = ({
       },
       callback: async (response) => {
         if (response.status === "success") {
-          // Verify payment with backend
           const isVerified = await verifyPayment(response.reference);
           if (!isVerified) {
             setPaymentError("Payment completed but verification failed. Please contact support with reference: " + response.reference);
@@ -250,9 +397,15 @@ const SalesSummary = ({
                         key={key}
                         label={paramList[index]}
                         value={
-                          value >= 1 ? formatNumberWithCommas(value) : value
+                          paramList[index] === "Discount" 
+                            ? `${value}%`
+                            : paramList[index] === "Initial Deposit"
+                              ? `${value}%`
+                              : value >= 1 
+                                ? formatNumberWithCommas(value) 
+                                : value
                         }
-                        showNaira={Boolean(value >= 2)}
+                        showNaira={false}
                       />
                     )
                   )}
@@ -286,14 +439,29 @@ const SalesSummary = ({
               </div>
             );
           })}
+          <PaymentModeSelector
+            value={SaleStore.paymentMethod as "ONLINE" | "CASH"}
+            onChange={(value) => {
+              SaleStore.setPaymentMethod(value as "ONLINE" | "CASH");
+            }}
+            saleId={SaleStore.paymentDetails?.metadata?.saleId}
+            amount={SaleStore.paymentDetails?.amount}
+            onAmountChange={(newAmount) => {
+              // Update the payment amount in the store
+              if (SaleStore.paymentDetails) {
+                SaleStore.paymentDetails.amount = newAmount;
+              }
+            }}
+          />
 
           {apiErrorMessage}
 
           <ProceedButton
             type="submit"
-            loading={loading}
+            loading={isSubmitting || loading}
             variant={getIsFormFilled() ? "gradient" : "gray"}
             disabled={!getIsFormFilled()}
+            onClick={handlePayment}
           />
         </>
       ) : (
@@ -321,13 +489,6 @@ const SalesSummary = ({
               value={paymentInfo?.reference || ""}
             />
           </div>
-
-          {displayError && (
-            <div className="p-3 mt-4 border border-red-500 rounded-md bg-red-50">
-              <p className="text-red-600 text-sm">{displayError}</p>
-            </div>
-          )}
-
           <ProceedButton
             type="button"
             onClick={handlePayment}

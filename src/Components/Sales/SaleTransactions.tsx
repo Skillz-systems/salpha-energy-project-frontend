@@ -17,6 +17,13 @@ type PaymentInfo = {
   deletedAt: string | null;
 };
 
+interface PaymentVerificationResponse {
+  status?: string;
+  message?: string;
+  jobId?: string;
+  paymentStatus?: "PENDING" | "COMPLETED";
+}
+
 const public_key =
   import.meta.env.PAYSTACK_PUBLIC_KEY ||
   "pk_test_764eb722cb244dc71a3dc8aba7875f6a7d1e9fd9";
@@ -47,14 +54,21 @@ const SaleTransactions = ({
         endpoint: `/v1/payment/verify/callback?txref=${reference}`,
         method: "get",
         showToast: false,
-      });
+      }) as { data: PaymentVerificationResponse };
 
       console.log('Payment verification response:', response);
 
-      // Check for successful verification
-      if (response?.data?.status === "success" || response?.status === "success") {
-        toast.success("Payment verified successfully!");
-        // Optionally refresh the page or update the transaction status
+      // Check for successful verification or processing status
+      if (response?.data?.status === "success" || 
+          response?.data?.status === "processing") {
+        // If payment status is COMPLETED, show success message
+        if (response?.data?.paymentStatus === "COMPLETED") {
+          toast.success("Payment completed successfully!");
+        } else {
+          toast.success(response?.data?.message || "Payment verification initiated successfully!");
+        }
+        
+        // Refresh the page to show updated status
         window.location.reload();
         return true;
       } else {
@@ -101,7 +115,7 @@ const SaleTransactions = ({
 
     setPaymentError(null);
 
-    const success = initializePayment({
+    initializePayment({
       key: public_key,
       email: data.customer.email,
       amount: selectedPaymentData.amount,
@@ -118,7 +132,6 @@ const SaleTransactions = ({
       },
       callback: async (response) => {
         if (response.status === "success") {
-          // Verify payment with backend
           const isVerified = await verifyPayment(response.reference);
           if (!isVerified) {
             setPaymentError("Payment completed but verification failed. Please contact support with reference: " + response.reference);
@@ -129,10 +142,6 @@ const SaleTransactions = ({
         }
       }
     });
-
-    if (!success) {
-      setPaymentError("Failed to initialize payment. Please try again.");
-    }
   }, [data, initializePayment, verifyPayment]);
 
   const dropDownList = {
