@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { PaginationType, Table } from "../TableComponent/Table";
 import { KeyedMutator } from "swr";
-import { ApiErrorStatesType } from "../../utils/useApiCall";
+import { ApiErrorStatesType, useApiCall, useGetRequest } from "../../utils/useApiCall";
 import { ErrorComponent } from "@/Pages/ErrorPage";
 import { formatNumberWithCommas } from "@/utils/helpers";
+import { NairaSymbol } from "../CardComponents/CardComponent";
 import { DropDown } from "../DropDownComponent/DropDown";
 import { useNavigate } from "react-router-dom";
 import edit from "../../assets/edit.svg";
@@ -58,14 +59,18 @@ const generateWarehouseEntries = (data: any): AllWarehouseEntries[] => {
         totalInventoryValue: warehouse?.totalInventoryValue,
         worth: warehouse?.worth,
         amount: warehouse?.amount,
+        inventoryWorth: warehouse?.inventoryWorth,
+        totalInventoryWorth: warehouse?.totalInventoryWorth,
         allKeys: Object.keys(warehouse || {})
       });
       
-      // Try multiple possible value fields
-      const warehouseValue = warehouse?.totalValue || 
-                           warehouse?.value || 
+      // Prioritize inventory-specific value fields for total money worth
+      const warehouseValue = warehouse?.totalInventoryValue || 
                            warehouse?.inventoryValue || 
-                           warehouse?.totalInventoryValue || 
+                           warehouse?.totalInventoryWorth ||
+                           warehouse?.inventoryWorth ||
+                           warehouse?.totalValue || 
+                           warehouse?.value || 
                            warehouse?.worth || 
                            warehouse?.amount || 
                            0;
@@ -97,7 +102,9 @@ interface WarehouseDropdownProps {
 
 const WarehouseDropdown = ({ items, onClickLink, warehouse }: WarehouseDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const { apiCall } = useApiCall();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -106,10 +113,68 @@ const WarehouseDropdown = ({ items, onClickLink, warehouse }: WarehouseDropdownP
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleDeactivateWarehouse = async () => {
+    if (!warehouse?.id) {
+      console.error("No warehouse ID provided");
+      return;
+    }
+
+    const isCurrentlyActive = warehouse.status === "ACTIVE";
+    const action = isCurrentlyActive ? "deactivate" : "activate";
+    const actionPast = isCurrentlyActive ? "deactivated" : "activated";
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to ${action} "${warehouse.name}"?`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeactivating(true);
+    try {
+      const response = await apiCall({
+        method: "patch",
+        endpoint: `/v1/warehouses/${warehouse.id}`,
+        successMessage: `Warehouse "${warehouse.name}" has been ${actionPast} successfully!`,
+      });
+
+      if (response.status === 200) {
+        // Refresh the table data
+        if (onClickLink) {
+          onClickLink(-1, warehouse); // Use -1 to indicate refresh action
+        }
+      }
+    } catch (error: any) {
+      console.error(`Failed to ${action} warehouse:`, error);
+      // Error message will be shown by the apiCall hook
+    } finally {
+      setIsDeactivating(false);
+      setIsOpen(false);
+    }
+  };
+
+  const handleItemClick = (index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isDeactivateOrActivate = items[index]?.includes("warehouse") && 
+                                  (items[index]?.includes("Deactivate") || items[index]?.includes("Activate"));
+    
+    if (isDeactivateOrActivate) {
+      handleDeactivateWarehouse();
+    } else {
+      onClickLink(index, warehouse);
+    }
+    
+    if (!isDeactivateOrActivate) {
+      setIsOpen(false);
+    }
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -120,29 +185,90 @@ const WarehouseDropdown = ({ items, onClickLink, warehouse }: WarehouseDropdownP
           setIsOpen(!isOpen);
         }}
         className="w-10 h-7 p-2 flex items-center justify-center bg-white border border-gray-200 rounded-full shadow hover:bg-gray-100"
+        disabled={isDeactivating}
       >
         <img src={edit} alt="Options" className="w-[16px] cursor-pointer" />
       </button>
       
       {isOpen && (
         <div className="absolute right-0 top-12 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-          {items.map((item: string, index: number) => (
-            <button
-              key={index}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClickLink(index, warehouse);
-                setIsOpen(false);
-              }}
-            >
-              {item}
-            </button>
-          ))}
+          {items.map((item: string, index: number) => {
+            const isDeactivateOrActivate = item.includes("warehouse") && 
+                                          (item.includes("Deactivate") || item.includes("Activate"));
+            const isDeactivate = item.includes("Deactivate");
+            const isActivate = item.includes("Activate");
+            
+            return (
+              <button
+                key={index}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                  isDeactivateOrActivate && isDeactivating 
+                    ? "text-gray-400 cursor-not-allowed" 
+                    : isDeactivate 
+                      ? "text-red-600 hover:bg-red-50" 
+                      : isActivate
+                        ? "text-green-600 hover:bg-green-50"
+                        : "text-gray-700"
+                }`}
+                onClick={(e) => handleItemClick(index, e)}
+                disabled={isDeactivateOrActivate && isDeactivating}
+              >
+                {isDeactivateOrActivate && isDeactivating 
+                  ? (isDeactivate ? "Deactivating..." : "Activating...") 
+                  : item}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
+  );
+};
+
+// Component to fetch and display warehouse inventory count badge
+const WarehouseInventoryBadge = ({ warehouse, isInactive }: { warehouse: any, isInactive: boolean }) => {
+  const { data: inventoryStats } = useGetRequest(
+    `/v1/inventory/stats?warehouseId=${warehouse.id}`,
+    !!warehouse.id
+  );
+
+  const inventoryCount = inventoryStats?.data?.totalInventoryCount || 0;
+
+  return (
+    <div className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-full text-xs font-medium ${
+      isInactive 
+        ? "bg-gray-200 text-gray-600" 
+        : "bg-blue-100 text-blue-700"
+    }`}>
+      {inventoryCount} Items
+    </div>
+  );
+};
+
+// Component to fetch and display warehouse inventory value
+const WarehouseValueDisplay = ({ warehouse, isInactive }: { warehouse: any, isInactive: boolean }) => {
+  const { data: inventoryStats } = useGetRequest(
+    `/v1/inventory/stats?warehouseId=${warehouse.id}`,
+    !!warehouse.id
+  );
+
+  // Use inventory stats value if available, otherwise fall back to warehouse value
+  const displayValue = inventoryStats?.data?.totalInventoryValue || 
+                      inventoryStats?.data?.totalValue ||
+                      warehouse.value || 0;
+
+  return (
+    <span 
+      className={`flex items-center px-4 py-1 rounded-full text-base font-medium gap-1 cursor-help ${
+        isInactive 
+          ? "bg-gray-100 text-gray-600" 
+          : "bg-green-100 text-green-700"
+      }`}
+      title={`Total Inventory Worth: ${formatNumberWithCommas(displayValue)}`}
+    >
+      <NairaSymbol color={isInactive ? "#6B7280" : "#15803D"} />
+      {formatNumberWithCommas(displayValue)}
+    </span>
   );
 };
 
@@ -208,7 +334,7 @@ const WarehouseTable = ({
     onClickLink: (index: number, cardData: any) => {
       switch (index) {
         case 0:
-          navigate(`/inventory?warehouseId=${cardData?.id}`);
+          navigate(`/inventory/all?warehouseId=${cardData?.id}`);
           break;
         case 1:
           setWarehouseId(cardData?.id);
@@ -218,7 +344,11 @@ const WarehouseTable = ({
           console.log("View Inventory Log", cardData?.id);
           break;
         case 3:
-          console.log("Deactivate warehouse", cardData?.id);
+          // Handled by WarehouseDropdown component
+          break;
+        case -1:
+          // Refresh table after deactivation
+          refreshTable();
           break;
         default:
           break;
@@ -226,6 +356,16 @@ const WarehouseTable = ({
     },
     defaultStyle: true,
     showCustomButton: true,
+  };
+
+  // Function to get dropdown items based on warehouse status
+  const getDropdownItems = (warehouse: any) => {
+    const baseItems = ["View warehouse", "View Details", "View Inventory Log"];
+    if (warehouse.status === "ACTIVE") {
+      return [...baseItems, "Deactivate warehouse"];
+    } else {
+      return [...baseItems, "Activate warehouse"];
+    }
   };
 
   const getTableData = () => {
@@ -261,32 +401,50 @@ const WarehouseTable = ({
               
               return data?.map((warehouse: any, index: number) => {
                 console.log("Rendering warehouse card:", warehouse);
+                const isInactive = warehouse.status === "INACTIVE";
+
                 return (
                   <div
                     key={warehouse.id || index}
-                    className="relative bg-white rounded-[28px] border-4 border-white shadow-md flex flex-col items-stretch w-full max-w-[440px]"
+                    className={`relative bg-white rounded-[28px] border-4 shadow-md flex flex-col items-stretch w-full max-w-[440px] cursor-pointer hover:shadow-lg transition-shadow ${
+                      isInactive 
+                        ? "border-gray-300 opacity-75" 
+                        : "border-white"
+                    }`}
                     style={{ boxShadow: "0 4px 24px 0 rgba(0,0,0,0.06)" }}
+                    onClick={() => navigate(`/inventory/all?warehouseId=${warehouse.id}`)}
                   >
+                    {isInactive && (
+                      <div className="absolute top-2 left-2 z-10 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        INACTIVE
+                      </div>
+                    )}
+                    <WarehouseInventoryBadge warehouse={warehouse} isInactive={isInactive} />
                     <img
                       src={warehouse.image}
                       alt={warehouse.name}
-                      className="w-full aspect-[16/7] object-cover rounded-[20px] mt-2"
+                      className={`w-full aspect-[16/7] object-cover rounded-[20px] mt-2 ${
+                        isInactive ? "grayscale" : ""
+                      }`}
                     />
                     <div className="flex items-center justify-between gap-2 px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="px-4 py-1 bg-purpleBlue border border-blue-300 text-dark-700 rounded-full text-base font-medium truncate max-w-[160px]" title={warehouse.name}>
+                        <span className={`px-4 py-1 border text-dark-700 rounded-full text-base font-medium truncate max-w-[160px] ${
+                          isInactive 
+                            ? "bg-gray-100 border-gray-300" 
+                            : "bg-purpleBlue border-blue-300"
+                        }`} title={warehouse.name}>
                           {warehouse.name}
                         </span>
-                        <span className="flex items-center px-4 py-1 bg-green-100 text-green-700 rounded-full text-base font-medium gap-1">
-                          <span className="text-lg">₦</span>
-                          {formatNumberWithCommas(warehouse.value)}
-                        </span>
+                        <WarehouseValueDisplay warehouse={warehouse} isInactive={isInactive} />
                       </div>
-                      <WarehouseDropdown 
-                        items={dropDownList.items}
-                        onClickLink={dropDownList.onClickLink}
-                        warehouse={warehouse}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <WarehouseDropdown 
+                          items={getDropdownItems(warehouse)}
+                          onClickLink={dropDownList.onClickLink}
+                          warehouse={warehouse}
+                        />
+                      </div>
                     </div>
                   </div>
                 );

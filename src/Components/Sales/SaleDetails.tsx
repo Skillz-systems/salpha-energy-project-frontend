@@ -192,6 +192,10 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           <p className="text-xs font-bold text-textDarkGrey">{data.customer}</p>
         </div>
         <div className="flex items-center justify-between">
+          <Tag name="Customer ID" />
+          <p className="text-xs font-bold text-textDarkGrey">{data.customerId}</p>
+        </div>
+        <div className="flex items-center justify-between">
           <Tag name="Installation Address" />
           <p className="text-xs font-bold text-textDarkGrey">{data.address}</p>
         </div>
@@ -202,6 +206,18 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         <div className="flex items-center justify-between">
           <Tag name="Email Address" />
           <p className="text-xs font-bold text-textDarkGrey">{data.email}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="Longitude" />
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.longitude || "N/A"}
+          </p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="Latitude" />
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.latitude || "N/A"}
+          </p>
         </div>
       </div>
 

@@ -18,6 +18,7 @@ export type SaleDetailsType = {
   saleId: string;
   productName: string;
   customer: string;
+  customerId: string;
   address: string;
   phone: string;
   email: string;
@@ -26,6 +27,8 @@ export type SaleDetailsType = {
   sale?: any;
   image: string;
   productQuantity: string;
+  latitude?: string;
+  longitude?: string;
   installmentData: {
     totalPrice: number;
     totalPaid: number;
@@ -78,6 +81,7 @@ const SalesDetailsModal = ({
       saleId: data?.id || "",
       productName: data?.product?.name || "",
       customer: customerName,
+      customerId: customerKey?.id || "",
       address: customerKey?.location || "",
       phone: customerKey?.phone || "",
       email: customerKey?.email || "",
@@ -85,6 +89,8 @@ const SalesDetailsModal = ({
       agent: data?.agent || "N/A",
       image: data?.product?.image || "",
       productQuantity: data?.quantity || 0,
+      latitude: customerKey?.latitude || "",
+      longitude: customerKey?.longitude || "",
       installmentData: {
         totalPrice: data?.sale?.totalPrice || 0,
         totalPaid: data?.sale?.totalPaid || 0,
