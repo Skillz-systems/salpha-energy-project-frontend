@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import PageLayout from "./PageLayout";
 import LoadingSpinner from "@/Components/Loaders/LoadingSpinner";
-import inventorybadge from "../assets/inventory/inventorybadge.png";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import inventorygradient from "../assets/inventory/inventorygradient.svg";
 import cancelled from "../assets/cancelled.svg";
@@ -14,7 +13,8 @@ import CreateNewInventory, {
   InventoryFormType,
 } from "@/Components/Inventory/CreateNewInventory";
 import { useGetRequest } from "@/utils/useApiCall";
-
+import ReturnToWarehouseButton from "@/Components/ReturnToWarehouseButton";
+import inventorybadge from "../assets/inventory/inventorybadge.png";
 const InventoryTable = lazy(
   () => import("@/Components/Inventory/InventoryTable")
 );
@@ -23,6 +23,8 @@ type InventoryClass = "REGULAR" | "RETURNED" | "REFURBISHED";
 
 const Inventory = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [formType, setFormType] = useState<InventoryFormType>("newInventory");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -32,24 +34,42 @@ const Inventory = () => {
     any
   > | null>({});
 
+  // Extract warehouseId from URL parameters
+  const warehouseId = searchParams.get("warehouseId");
+
   const queryString = Object.entries(tableQueryParams || {})
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join("&");
+
+  // Add warehouseId to the inventory API call if it exists
+  const inventoryEndpoint = `/v1/inventory?page=${currentPage}&limit=${entriesPerPage}${
+    warehouseId ? `&warehouseId=${warehouseId}` : ""
+  }${queryString && `&${queryString}`}`;
 
   const {
     data: inventoryData,
     isLoading: inventoryLoading,
     mutate: allInventoryRefresh,
     errorStates: allInventoryErrorStates,
+  } = useGetRequest(inventoryEndpoint, true, 60000);
+
+  // Fetch warehouse details if warehouseId is provided
+  const warehouseEndpoint = warehouseId ? `/v1/warehouses/${warehouseId}` : "";
+  const {
+    data: warehouseData,
+    isLoading: warehouseLoading,
   } = useGetRequest(
-    `/v1/inventory?page=${currentPage}&limit=${entriesPerPage}${
-      queryString && `&${queryString}`
-    }`,
-    true,
+    warehouseEndpoint,
+    !!warehouseId,
     60000
   );
 
-  const fetchInventoryStats = useGetRequest("/v1/inventory/stats", true);
+  // Add warehouseId to stats endpoint if it exists
+  const statsEndpoint = warehouseId 
+    ? `/v1/inventory/stats?warehouseId=${warehouseId}` 
+    : "/v1/inventory/stats";
+
+  const fetchInventoryStats = useGetRequest(statsEndpoint, true);
 
   const paginationInfo = () => {
     const total = inventoryData?.total;
@@ -64,31 +84,46 @@ const Inventory = () => {
 
   function getFilteredClassCount(classList: InventoryClass) {
     const filteredClass =
-      fetchInventoryStats?.data?.inventoryClassCounts.find(
+      fetchInventoryStats?.data?.inventoryClassCounts?.find(
         (item: { inventoryClass: string }) => item.inventoryClass === classList
       )?.count || 0;
     return filteredClass;
   }
 
+  // Get warehouse name for display
+  const getWarehouseName = () => {
+    if (!warehouseId) return null;
+    
+    // Use warehouse data from API
+    if (warehouseData?.data?.name) {
+      return warehouseData.data.name;
+    }
+    
+    // If no data yet, return null (will show loading or no badge)
+    return null;
+  };
+
+  const warehouseName = getWarehouseName();
+
   const navigationList = [
     {
       title: "All Inventory",
-      link: "/inventory/all",
+      link: warehouseId ? `/inventory/all?warehouseId=${warehouseId}` : "/inventory/all",
       count: fetchInventoryStats?.data?.totalInventoryCount || 0,
     },
     {
       title: "Regular",
-      link: "/inventory/regular",
+      link: warehouseId ? `/inventory/regular?warehouseId=${warehouseId}` : "/inventory/regular",
       count: getFilteredClassCount("REGULAR"),
     },
     {
       title: "Returned",
-      link: "/inventory/returned",
+      link: warehouseId ? `/inventory/returned?warehouseId=${warehouseId}` : "/inventory/returned",
       count: getFilteredClassCount("RETURNED"),
     },
     {
       title: "Refurbished",
-      link: "/inventory/refurbished",
+      link: warehouseId ? `/inventory/refurbished?warehouseId=${warehouseId}` : "/inventory/refurbished",
       count: getFilteredClassCount("REFURBISHED"),
     },
   ];
@@ -149,7 +184,11 @@ const Inventory = () => {
 
   return (
     <>
-      <PageLayout pageName="Inventory" badge={inventorybadge}>
+      <PageLayout 
+        pageName="Inventory" 
+        badge={inventorybadge}
+        warehouseName={warehouseName || undefined}
+      >
         <section className="flex flex-col-reverse sm:flex-row items-center justify-between w-full bg-paleGrayGradient px-2 md:px-8 py-4 gap-2 min-h-[64px]">
           <div className="flex flex-wrap w-full items-center gap-2 gap-y-3">
             <TitlePill
@@ -193,8 +232,12 @@ const Inventory = () => {
             <DropDown {...dropDownList} />
           </div>
         </section>
+        
         <div className="flex flex-col w-full px-2 py-8 gap-4 lg:flex-row md:p-8">
-          <SideMenu navigationList={navigationList} />
+          <div className="flex flex-col gap-4 sm:max-w-[208px]">
+            <SideMenu navigationList={navigationList} />
+            <ReturnToWarehouseButton />
+          </div>
           <section className="relative items-start justify-center flex min-h-[415px] w-full overflow-hidden">
             <Suspense
               fallback={

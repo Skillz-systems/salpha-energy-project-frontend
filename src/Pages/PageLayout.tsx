@@ -7,6 +7,7 @@ interface LayoutProps {
   badge?: string;
   showheaderBadge?: boolean;
   className?: string;
+  warehouseName?: string;
   children: React.ReactNode;
 }
 
@@ -15,6 +16,7 @@ const PageLayout: React.FC<LayoutProps> = ({
   badge,
   showheaderBadge = true,
   className = "w-full",
+  warehouseName,
   children,
 }) => {
   return (
@@ -22,7 +24,11 @@ const PageLayout: React.FC<LayoutProps> = ({
       <div className="flex flex-col items-center justify-center w-full max-w-screen-2xl">
         <TopNavComponent />
         {showheaderBadge && (
-          <HeaderBadge pageName={pageName as string} image={badge as string} />
+          <HeaderBadge 
+            pageName={pageName as string} 
+            image={badge as string} 
+            warehouseName={warehouseName}
+          />
         )}
         <div className={`${className}`}>{children}</div>
       </div>

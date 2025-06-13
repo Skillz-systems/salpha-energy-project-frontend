@@ -26,18 +26,16 @@ import {
 import { revalidateStore } from "@/utils/helpers";
 import SalesSummary from "./SalesSummary";
 import ApiErrorMessage from "../ApiErrorMessage";
-import { FlutterwaveConfig } from "flutterwave-react-v3/dist/types";
 import { toJS } from "mobx";
+import { getPaystackSettings } from "@/utils/paystackConfig";
+import axios from "axios";
 
-const public_key =
-  import.meta.env.VITE_FLW_PUBLIC_KEY ||
-  "FLWPUBK_TEST-720d3bd8434091e9b28a01452ebdd2e0-X";
-const base_url = import.meta.env.VITE_API_BASE_URL;
 
 type CreateSalesType = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   allSalesRefresh: KeyedMutator<any>;
+  
 };
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,6 +49,31 @@ export type ExtraInfoType =
   | "nextOfKin"
   | "guarantor"
   | "";
+
+const paystackSettings = getPaystackSettings();
+
+interface PaymentData {
+  amount: number;
+  reference: string;
+  saleId: string;
+  customer: {
+    email: string;
+  };
+}
+
+interface ApiResponse {
+  data: {
+    paymentData: {
+      amount: number;
+      reference: string;
+      saleId: string;
+      customer: {
+        name: string;
+        email: string;
+      };
+    };
+  };
+}
 
 const CreateNewSale = observer(
   ({ isOpen, setIsOpen, allSalesRefresh }: CreateSalesType) => {
@@ -92,21 +115,31 @@ const CreateNewSale = observer(
         customerId: SaleStore.customer?.customerId as string,
         saleItems: SaleStore.getTransformedSaleItems() as SaleItem[],
         applyMargin: formData.applyMargin,
+        paymentMethod: SaleStore.paymentMethod,
       };
+      
+      // If any sale item has installment payment mode, include additional required fields
       if (SaleStore.doesSaleItemHaveInstallment()) {
+        // Include BVN from formData
         payload.bvn = formData.bvn;
+        
+        // Include other details from the store
         payload.identificationDetails = SaleStore.identificationDetails;
         payload.nextOfKinDetails = SaleStore.nextOfKinDetails;
         payload.guarantorDetails = SaleStore.guarantorDetails;
       }
+      
       return payload;
-    }, [formData]);
+    }, [formData, SaleStore.paymentMethod]);
 
     const handleInputChange = (name: string, value: any) => {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
+      if (name === "paymentMethod") {
+        SaleStore.setPaymentMethod(value);
+      }
       resetFormErrors(name);
     };
 
@@ -115,6 +148,7 @@ const CreateNewSale = observer(
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setLoading(true);
+      console.log(payload);
 
       try {
         // Step 1: Validate data
@@ -124,36 +158,50 @@ const CreateNewSale = observer(
         const response = await apiCall({
           endpoint: "/v1/sales/create",
           method: "post",
-          data: validatedData,
+          data: getPayload(),
           successMessage: "Sale created successfully!",
-        });
+        }) as ApiResponse;
 
         // Step 3: Refresh sales list
         await allSalesRefresh();
 
         // Step 4: Handle save payment information
         const paymentData = response?.data?.paymentData;
-        const newPaymentData: FlutterwaveConfig = {
-          ...paymentData,
-          public_key,
-          redirect_url: `${base_url}/sales`,
-          customer: {
-            ...paymentData?.customer,
-            phone_number: SaleStore?.customer?.phone || "",
-            name: SaleStore.customer?.customerName || "",
-          },
-        };
-        if (paymentData?.amount) {
-          SaleStore.addPaymentDetails(newPaymentData);
+        
+        if (!paystackSettings.validation.valid) {
+          console.error("Paystack configuration error:", paystackSettings.validation.message);
+          setApiError("Payment system configuration error. Please contact support.");
+          return;
         }
-      } catch (error: any) {
+        
+        const newPaymentData = {
+          publicKey: paystackSettings.publicKey,
+          email: SaleStore?.customer?.email || paymentData?.customer?.email || "",
+          amount: paymentData?.amount || 0,
+          currency: paystackSettings.currency,
+          reference: paymentData?.reference || `sale_${Date.now()}`,
+          metadata: {
+            saleId: paymentData?.saleId || "",
+            customerName: SaleStore.customer?.customerName || "",
+            phoneNumber: SaleStore?.customer?.phone || "",
+          },
+          channels: paystackSettings.channels,
+        };
+        
+        if (paymentData?.amount && paymentData?.amount > 0 && validatedData.paymentMethod === "ONLINE") {
+          SaleStore.addPaymentDetails(newPaymentData);
+        } else {
+          // If no payment is required or it's a cash payment, just close the modal
+          resetSaleModalState();
+        }
+      } catch (error) {
         if (error instanceof z.ZodError) {
           setFormErrors(error.issues);
-        } else {
-          const message =
-            error?.response?.data?.message ||
-            "Sale Creation Failed: Internal Server Error";
+        } else if (axios.isAxiosError(error)) {
+          const message = error.response?.data?.message || "Sale Creation Failed: Internal Server Error";
           setApiError(message);
+        } else {
+          setApiError("Sale Creation Failed: Internal Server Error");
         }
       } finally {
         setLoading(false);
@@ -235,7 +283,7 @@ const CreateNewSale = observer(
               >
                 {!summaryState
                   ? "New Sale"
-                  : !SaleStore.paymentDetails.tx_ref
+                  : !SaleStore.paymentDetails.reference
                   ? "Sale Summary"
                   : "Proceed to Payment"}
               </h2>
@@ -334,7 +382,7 @@ const CreateNewSale = observer(
                       <Input
                         type="text"
                         name="bvn"
-                        label="BANK VERIFICATION NUUMBER"
+                        label="BANK VERIFICATION NUMBER"
                         value={formData.bvn as string}
                         onChange={(e) => {
                           const numericValue = e.target.value.replace(
@@ -344,6 +392,7 @@ const CreateNewSale = observer(
                           if (numericValue.length <= 11) {
                             handleInputChange(e.target.name, numericValue);
                           }
+
                         }}
                         placeholder="Enter 11 digit BVN"
                         required={false}
@@ -461,6 +510,7 @@ const CreateNewSale = observer(
                   loading={loading}
                   getIsFormFilled={getIsFormFilled}
                   apiErrorMessage={<ApiErrorMessage apiError={apiError} />}
+                  payload={getPayload()}
                 />
               )}
             </div>

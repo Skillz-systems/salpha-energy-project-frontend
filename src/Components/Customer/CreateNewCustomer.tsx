@@ -6,7 +6,6 @@ import ProceedButton from "../ProceedButtonComponent/ProceedButtonComponent";
 import { Input, SelectInput } from "../InputComponent/Input";
 import { z } from "zod";
 import ApiErrorMessage from "../ApiErrorMessage";
-import { GooglePlacesInput } from "../InputComponent/GooglePlacesInput";
 
 interface CreatNewCustomerProps {
   isOpen: boolean;
@@ -186,22 +185,15 @@ const CreateNewCustomer = ({
             required={true}
             errorMessage={getFieldError("phone")}
           />
-          <GooglePlacesInput
+          <Input
             type="text"
             name="location"
             label="Location"
             value={formData.location}
-            placeholder="Search for a location"
+            onChange={handleInputChange}
+            placeholder="Enter location"
             required={true}
             errorMessage={getFieldError("location")}
-            onChange={(value, _place, coordinates) => {
-              setFormData((prev) => ({
-                ...prev,
-                location: value,
-                longitude: coordinates?.lng || "",
-                latitude: coordinates?.lat || "",
-              }));
-            }}
           />
           <SelectInput
             label="Address Type"

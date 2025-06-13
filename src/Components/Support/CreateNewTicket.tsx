@@ -1,134 +1,215 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import { useApiCall } from "@/utils/useApiCall";
+import React, { useState } from "react";
+import { KeyedMutator } from "swr";
+import { Modal } from "../ModalComponent/Modal";
+import ProceedButton from "../ProceedButtonComponent/ProceedButtonComponent";
+import { Input } from "../InputComponent/Input";
+import { z } from "zod";
+import ApiErrorMessage from "../ApiErrorMessage";
 
-interface TicketData {
-  subject: string;
-  category: string;
-  priority: "low" | "medium" | "high";
-  description: string;
+interface CreatNewTicketProps {
+  isOpen: boolean;
+  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  allTicketRefresh: KeyedMutator<any>;
 }
 
-interface CreateNewTicketProps {
-  onSubmit: (data: TicketData) => void;
-  onClose: () => void;
-}
+const ticketSchema = z.object({
+  type: z.string().min(1, "Type is required"),
+  priority: z.string().min(1, "Priority is required"),
+  subject: z.string().min(1, "Subject is required"),
+  description: z.string().min(1, "Description is required"),
+});
 
-const CreateNewTicket: React.FC<CreateNewTicketProps> = ({ onSubmit, onClose }) => {
-  const [ticketData, setTicketData] = useState<TicketData>({
-    subject: "",
-    category: "",
-    priority: "medium",
-    description: ""
-  });
+type TicketFormData = z.infer<typeof ticketSchema>;
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+const defaultFormData = {
+  type: "",
+  priority: "",
+  subject: "",
+  description: "",
+};
+
+const CreateNewTicket = ({
+  isOpen,
+  setIsOpen,
+  allTicketRefresh,
+}: CreatNewTicketProps) => {
+  const { apiCall } = useApiCall();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<TicketFormData>(defaultFormData);
+  const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
+  const [apiError, setApiError] = useState<string | Record<string, string[]>>(
+    ""
+  );
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setTicketData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
+    resetFormErrors(name);
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSelectChange = (name: string, values: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: values,
+    }));
+    resetFormErrors(name);
+  };
+
+  const resetFormErrors = (name: string) => {
+    // Clear the error for this field when the user starts typing
+    setFormErrors((prev) => prev.filter((error) => error.path[0] !== name));
+    setApiError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSubmit(ticketData);
+    setLoading(true);
+
+    try {
+      const validatedData = ticketSchema.parse(formData);
+      await apiCall({
+        endpoint: "/v1/tickets/create",
+        method: "post",
+        data: validatedData,
+        successMessage: "Ticket created successfully!",
+      });
+
+      await allTicketRefresh();
+      setIsOpen(false);
+      setFormData(defaultFormData);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        setFormErrors(error.issues);
+      } else {
+        const message =
+          error?.response?.data?.message ||
+          "Ticket Creation Failed: Internal Server Error";
+        setApiError(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isFormFilled = ticketSchema.safeParse(formData).success;
+
+  const getFieldError = (fieldName: string) => {
+    return formErrors.find((error) => error.path[0] === fieldName)?.message;
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-textDarkGrey">Create New Support Ticket</h2>
-        <button 
-          className="text-textGrey hover:text-textDarkGrey"
-          onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={() => setIsOpen(false)}
+      layout="right"
+      bodyStyle="pb-[100px]"
+    >
+      <form
+        className="flex flex-col items-center bg-white"
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        <div
+          className={`flex items-center justify-center px-4 w-full min-h-[64px] border-b-[0.6px] border-strokeGreyThree ${isFormFilled
+              ? "bg-paleCreamGradientLeft"
+              : "bg-paleGrayGradientLeft"
+            }`}
         >
-          ×
-        </button>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="subject" className="text-sm text-textDarkGrey">Subject</label>
-          <input
-            type="text"
-            id="subject"
-            name="subject"
-            value={ticketData.subject}
-            onChange={handleChange}
-            className="p-2 border border-strokeGreyThree rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="Brief description of the issue"
-            required
-          />
-        </div>
-        
-        <div className="flex flex-col gap-1">
-          <label htmlFor="category" className="text-sm text-textDarkGrey">Category</label>
-          <select
-            id="category"
-            name="category"
-            value={ticketData.category}
-            onChange={handleChange}
-            className="p-2 border border-strokeGreyThree rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-            required
+          <h2
+            style={{ textShadow: "1px 1px grey" }}
+            className="text-xl text-textBlack font-semibold font-secondary"
           >
-            <option value="">Select a category</option>
-            <option value="technical">Technical Issue</option>
-            <option value="billing">Billing</option>
-            <option value="account">Account</option>
-            <option value="product">Product</option>
-            <option value="other">Other</option>
-          </select>
+            New Ticket
+          </h2>
         </div>
-        
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-textDarkGrey">Priority</label>
-          <div className="flex gap-4">
-            {["low", "medium", "high"].map((priority) => (
-              <label key={priority} className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="priority"
-                  value={priority}
-                  checked={ticketData.priority === priority}
-                  onChange={handleChange}
-                  className="text-primary"
-                />
-                <span className="text-sm text-textDarkGrey capitalize">{priority}</span>
-              </label>
-            ))}
+        <div className="flex flex-col items-center justify-center w-full px-4 gap-6 py-8">
+          <div className="w-full relative">
+            <span className="absolute left-4 top-3 text-red-500">*</span>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-full text-gray-600 focus:outline-none focus:border-textBlack"
+              required
+            >
+              <option value="">Select Type</option>
+              <option value="question">Question</option>
+              <option value="problem">Problem</option>
+              <option value="feature">Feature Request</option>
+              <option value="other">Other</option>
+            </select>
+            {getFieldError("type") && (
+              <p className="text-errorTwo text-xs mt-1 pl-4">{getFieldError("type")}</p>
+            )}
           </div>
-        </div>
-        
-        <div className="flex flex-col gap-1">
-          <label htmlFor="description" className="text-sm text-textDarkGrey">Description</label>
-          <textarea
-            id="description"
-            name="description"
-            value={ticketData.description}
-            onChange={handleChange}
-            rows={4}
-            className="p-2 border border-strokeGreyThree rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="Please provide details about your issue..."
-            required
-          />
-        </div>
-        
-        <div className="flex gap-2 justify-end mt-2">
-          <button 
-            type="button"
-            className="px-4 py-2 border border-strokeGreyThree rounded-md hover:bg-gray-50"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button 
+          
+          <div className="w-full relative">
+            <span className="absolute left-4 top-3 text-red-500">*</span>
+            <select
+              name="priority"
+              value={formData.priority}
+              onChange={handleInputChange}
+              className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-full text-gray-600 focus:outline-none focus:border-textBlack"
+              required
+            >
+              <option value="">Select Priority</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+            {getFieldError("priority") && (
+              <p className="text-errorTwo text-xs mt-1 pl-4">{getFieldError("priority")}</p>
+            )}
+          </div>
+          
+          <div className="w-full relative">
+            <span className="absolute left-4 top-3 text-red-500">*</span>
+            <input
+              type="text"
+              name="subject"
+              value={formData.subject}
+              onChange={handleInputChange}
+              placeholder="Subject"
+              className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-full text-gray-600 focus:outline-none focus:border-textBlack"
+              required
+            />
+            {getFieldError("subject") && (
+              <p className="text-errorTwo text-xs mt-1 pl-4">{getFieldError("subject")}</p>
+            )}
+          </div>
+          
+          <div className="w-full relative">
+            <span className="absolute left-4 top-3 text-red-500">*</span>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Type complaint here"
+              className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-3xl text-gray-600 focus:outline-none focus:border-textBlack min-h-[200px] resize-none"
+              required
+            />
+            {getFieldError("description") && (
+              <p className="text-errorTwo text-xs mt-1 pl-4">{getFieldError("description")}</p>
+            )}
+          </div>
+          
+          <ApiErrorMessage apiError={apiError} />
+
+          <ProceedButton
             type="submit"
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-opacity-90"
-          >
-            Submit Ticket
-          </button>
+            loading={loading}
+            variant={isFormFilled ? "gradient" : "gray"}
+            disabled={!isFormFilled}
+          />
         </div>
       </form>
-    </div>
+    </Modal>
   );
 };
 

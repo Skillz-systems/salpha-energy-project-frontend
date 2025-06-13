@@ -14,11 +14,12 @@ import { useGetRequest } from "@/utils/useApiCall";
 
 const WarehouseTable = lazy(() => import("@/Components/WareHouses/WarehouseTable"));
 
+type WarehouseFormType = "newWarehouse";
+type WarehouseClass = "REGULAR" | "RETURNED" | "REFURBISHED";
 
 const WareHouses = () => {
     const location = useLocation();
     const [isOpen, setIsOpen] = useState<boolean>(false);
-    const [formType, setFormType] = useState<WarehouseFormType>("newWarehouse");
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [entriesPerPage, setEntriesPerPage] = useState<number>(20);
     const [tableQueryParams, setTableQueryParams] = useState<Record<string, any> | null>({});
@@ -33,12 +34,12 @@ const WareHouses = () => {
         mutate: allWarehouseRefresh,
         errorStates: allWarehouseErrorStates,
     } = useGetRequest(
-        `/v1/inventory/stats?page=${currentPage}&limit=${entriesPerPage}${queryString && `&${queryString}`}`,
+        `/v1/warehouses?page=${currentPage}&limit=${entriesPerPage}${queryString && `&${queryString}`}`,
         true,
         60000
     );
 
-    const fetchWarehouseStats = useGetRequest("/v1/inventory/stats", true);
+    const fetchWarehouseStats = useGetRequest("/v1/warehouses/statistics/view", true);
 
     const paginationInfo = () => {
         const total = warehouseData?.total;
@@ -58,7 +59,6 @@ const WareHouses = () => {
             )?.count || 0;
         return filteredClass;
     }
-
 
     useEffect(() => {
         setTableQueryParams({});
@@ -99,7 +99,7 @@ const WareHouses = () => {
                             iconBgColor="bg-[#FDEEC2]"
                             topText="All"
                             bottomText="WAREHOUSES"
-                            value={fetchWarehouseStats?.data?.totalWarehouseCount || 0}
+                            value={fetchWarehouseStats?.data?.totalWarehouses || warehouseData?.total || 0}
                         />
                     </div>
                     <div className="flex w-full items-center justify-between gap-2 min-w-max sm:w-max sm:justify-end">
@@ -120,7 +120,17 @@ const WareHouses = () => {
                                     <Route
                                         key={path}
                                         path={path}
-                                        element={<WarehouseTable />}
+                                        element={
+                                            <WarehouseTable
+                                                warehouseData={warehouseData}
+                                                isLoading={warehouseLoading}
+                                                refreshTable={allWarehouseRefresh}
+                                                error={null}
+                                                errorData={allWarehouseErrorStates}
+                                                paginationInfo={paginationInfo}
+                                                setTableQueryParams={setTableQueryParams}
+                                            />
+                                        }
                                     />
                                 ))}
                             </Routes>
@@ -131,8 +141,6 @@ const WareHouses = () => {
             <CreateNewWarehouse
                 isOpen={isOpen}
                 setIsOpen={setIsOpen}
-                formType={formType}
-                allWarehouseRefresh={allWarehouseRefresh}
             />
         </>
     );
