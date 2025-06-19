@@ -22,12 +22,12 @@ export default defineConfig({
       usePolling: true,
       followSymlinks: false,
     },
-    allowedHosts: ["plankton-app-v6zgk.ondigitalocean.app", "salpha-energy-rwgip.ondigitalocean.app"],
+    allowedHosts: ["plankton-app-v6zgk.ondigitalocean.app", "salpha-energy-rwgip.ondigitalocean.app", "salphacrm.com"],
   },
   preview: {
     host: "0.0.0.0",
     port: 5173,
-    allowedHosts: ["plankton-app-v6zgk.ondigitalocean.app", "salpha-energy-rwgip.ondigitalocean.app"],
+    allowedHosts: ["plankton-app-v6zgk.ondigitalocean.app", "salpha-energy-rwgip.ondigitalocean.app", "salphacrm.com"],
   },
   plugins: [react(), tsconfigPaths()],
   resolve: {
