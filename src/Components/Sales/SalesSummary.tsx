@@ -424,8 +424,8 @@ const SalesSummary = ({
                       )
                     )}
                   </div>
+                 
                 )}
-
                 <div className="flex flex-col w-full gap-2 bg-[#F9F9F9] p-3 border-[0.6px] border-strokeGreyThree rounded-[20px]">
                   <ProductDetailRow
                     label="Recipient Name"

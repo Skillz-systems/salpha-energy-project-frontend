@@ -641,6 +641,7 @@ const saleStore = types
         return inventory ? [...inventory.devices] : [];
       }
 
+
       // Default to all devices for product
       return [...productEntry.devices];
     },
