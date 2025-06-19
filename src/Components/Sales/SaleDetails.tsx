@@ -9,6 +9,7 @@ import {
 import { formatDateTime, formatNumberWithCommas } from "@/utils/helpers";
 import customericon from "../../assets/customers/customericon.svg";
 import creditcardicon from "../../assets/creditcardgrey.svg";
+import SaleDevices from "./SaleDevices";
 
 type InstallmentAccountDetails = {
   id: string;
@@ -74,6 +75,26 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           </p>
         </div>
       </div>
+
+      {data.devices && data.devices.length > 0 && (
+        <div className="flex flex-col p-2.5 gap-2 bg-white border-[0.6px] border-strokeGreyThree rounded-[20px]">
+          <p className="flex gap-1 w-max text-textLightGrey text-xs font-medium pb-2">
+            <img src={producticon} alt="Product Icon" /> DEVICES
+          </p>
+          {data.devices.map((device) => (
+            <div key={device.id} className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Tag name="Device ID" />
+                <p className="text-xs font-bold text-textDarkGrey">{device.id}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <Tag name="Serial Number" />
+                <p className="text-xs font-bold text-textDarkGrey">{device.serialNumber}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {data?.paymentMode === "INSTALLMENT" && (
         <div className="flex flex-col p-2.5 gap-2 bg-white border-[0.6px] border-strokeGreyThree rounded-[20px]">

@@ -29,6 +29,10 @@ export type SaleDetailsType = {
   productQuantity: string;
   latitude?: string;
   longitude?: string;
+  devices?: Array<{
+    id: string;
+    serialNumber: string;
+  }>;
   installmentData: {
     totalPrice: number;
     totalPaid: number;
@@ -91,6 +95,10 @@ const SalesDetailsModal = ({
       productQuantity: data?.quantity || 0,
       latitude: customerKey?.latitude || "",
       longitude: customerKey?.longitude || "",
+      devices: data?.devices?.map((device: any) => ({
+        id: device.id,
+        serialNumber: device.serialNumber,
+      })) || [],
       installmentData: {
         totalPrice: data?.sale?.totalPrice || 0,
         totalPaid: data?.sale?.totalPaid || 0,
