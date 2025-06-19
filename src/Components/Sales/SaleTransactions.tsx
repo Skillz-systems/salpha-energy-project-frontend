@@ -10,7 +10,7 @@ type PaymentInfo = {
   id: string;
   transactionRef: string;
   amount: number;
-  paymentStatus: "PENDING" | "COMPLETED" | "INCOMPLETE";
+  paymentStatus: "INCOMPLETE" | "COMPLETED";
   paymentDate: string;
   saleId: string;
   createdAt: string;
@@ -23,7 +23,7 @@ interface PaymentVerificationResponse {
   status?: string;
   message?: string;
   jobId?: string;
-  paymentStatus?: "PENDING" | "COMPLETED" | "INCOMPLETE";
+  paymentStatus?: "INCOMPLETE" | "COMPLETED"
 }
 
 const public_key =
@@ -46,22 +46,10 @@ const SaleTransactions = ({
   const { apiCall } = useApiCall();
   const { isReady, error: paystackError, loading: paymentLoading, initializePayment } = usePaystack();
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [showIncompletePaymentModal, setShowIncompletePaymentModal] = useState(false);
-  const [incompletePaymentData, setIncompletePaymentData] = useState<any>(null);
-
-  const handleCompletePayment = () => {
-    setShowIncompletePaymentModal(false);
-    try {
-      const response =  apiCall({
-        endpoint: `/v1/payment/complete/${incompletePaymentData.id}`,
-        method: "post",
-        showToast: true,
-      });
-    } catch (error: any) {
-      console.error("Payment verification error:", error);
-    }
-  }
-  
+  const [showPaymentModeSelector, setShowPaymentModeSelector] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "CASH">("CASH");
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
 
   // Verify payment with backend
   const verifyPayment = async (reference: string) => {
@@ -83,7 +71,10 @@ const SaleTransactions = ({
         // If payment status is COMPLETED, show success message
         if (response?.data?.paymentStatus === "COMPLETED") {
           toast.success("Payment completed successfully!");
-        } else if (response?.data?.paymentStatus === "INCOMPLETE") {
+
+        }
+        // If payment status is INCOMPLETE, show incomplete payment message
+        if (response?.data?.paymentStatus === "INCOMPLETE") {
           toast.warning("Payment is incomplete. Please complete the payment.");
         }
         
@@ -163,12 +154,40 @@ const SaleTransactions = ({
     });
   }, [data, initializePayment, verifyPayment]);
 
+  const handleCompletePayment = (paymentId: string) => {
+    console.log("Completing payment for:", paymentId);
+    const selectedPaymentData = data?.paymentInfo?.find(p => p.id === paymentId);
+    if (selectedPaymentData) {
+      setPaymentAmount(selectedPaymentData.amount);
+    }
+    setSelectedPaymentId(paymentId);
+    setShowPaymentModeSelector(true);
+  };
+
+  const handleClosePaymentModeSelector = () => {
+    setShowPaymentModeSelector(false);
+    setSelectedPaymentId(null);
+    setPaymentMode("CASH");
+    setPaymentAmount(0);
+  };
+
+  const handlePaymentModeChange = (mode: string) => {
+    setPaymentMode(mode as "ONLINE" | "CASH");
+  };
+
+  const handlePaymentAmountChange = (amount: number) => {
+    setPaymentAmount(amount);
+  };
+
   const dropDownList = {
-    items: ["Make Payment"],
+    items: ["Make Payment", "Complete Payment"],
     onClickLink: (index: number, cardData: any) => {
       switch (index) {
         case 0:
           handlePayment(cardData?.productId);
+          break;
+        case 1:
+          handleCompletePayment(cardData?.productId);
           break;
         default:
           break;
@@ -206,13 +225,49 @@ const SaleTransactions = ({
             showDropdown={item?.paymentStatus === "COMPLETED" || item?.paymentStatus === "INCOMPLETE" ? false : true}
           />
         ))}
-      </div>  
-      {showIncompletePaymentModal && (
-        <PaymentModeSelector
-          data={incompletePaymentData}
-          onComplete={handleCompletePayment}
-          onCancel={handleCancelPayment}
-        />
+      </div>
+
+      {/* Payment Mode Selector Modal/Component */}
+      {showPaymentModeSelector && selectedPaymentId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Complete Payment</h3>
+              <button
+                onClick={handleClosePaymentModeSelector}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            <PaymentModeSelector
+              value={paymentMode}
+              onChange={handlePaymentModeChange}
+              saleId={selectedPaymentId}
+              amount={paymentAmount}
+              onAmountChange={handlePaymentAmountChange}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleClosePaymentModeSelector}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Handle the actual payment completion logic here
+                  console.log("Processing payment:", { paymentMode, paymentAmount, selectedPaymentId });
+                  toast.success("Payment completed successfully!");
+                  handleClosePaymentModeSelector();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Complete Payment
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
