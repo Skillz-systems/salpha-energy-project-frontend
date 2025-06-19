@@ -10,7 +10,7 @@ type PaymentInfo = {
   id: string;
   transactionRef: string;
   amount: number;
-  paymentStatus: "PENDING" | "COMPLETED" | "INCOMPLETE";
+  paymentStatus: "INCOMPLETE" | "COMPLETED";
   paymentDate: string;
   saleId: string;
   createdAt: string;
@@ -23,7 +23,7 @@ interface PaymentVerificationResponse {
   status?: string;
   message?: string;
   jobId?: string;
-  paymentStatus?: "PENDING" | "COMPLETED" | "INCOMPLETE";
+  paymentStatus?: "INCOMPLETE" | "COMPLETED"
 }
 
 const public_key =
@@ -46,22 +46,6 @@ const SaleTransactions = ({
   const { apiCall } = useApiCall();
   const { isReady, error: paystackError, loading: paymentLoading, initializePayment } = usePaystack();
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [showIncompletePaymentModal, setShowIncompletePaymentModal] = useState(false);
-  const [incompletePaymentData, setIncompletePaymentData] = useState<any>(null);
-
-  const handleCompletePayment = () => {
-    setShowIncompletePaymentModal(false);
-    try {
-      const response =  apiCall({
-        endpoint: `/v1/payment/complete/${incompletePaymentData.id}`,
-        method: "post",
-        showToast: true,
-      });
-    } catch (error: any) {
-      console.error("Payment verification error:", error);
-    }
-  }
-  
 
   // Verify payment with backend
   const verifyPayment = async (reference: string) => {
@@ -83,7 +67,10 @@ const SaleTransactions = ({
         // If payment status is COMPLETED, show success message
         if (response?.data?.paymentStatus === "COMPLETED") {
           toast.success("Payment completed successfully!");
-        } else if (response?.data?.paymentStatus === "INCOMPLETE") {
+
+        }
+        // If payment status is INCOMPLETE, show incomplete payment message
+        if (response?.data?.paymentStatus === "INCOMPLETE") {
           toast.warning("Payment is incomplete. Please complete the payment.");
         }
         
@@ -163,12 +150,19 @@ const SaleTransactions = ({
     });
   }, [data, initializePayment, verifyPayment]);
 
+  const handleCompletePayment = (paymentId: string) => {
+    console.log("Completing payment for:", paymentId);
+  };
+
   const dropDownList = {
-    items: ["Make Payment"],
+    items: ["Make Payment", "Complete Payment"],
     onClickLink: (index: number, cardData: any) => {
       switch (index) {
         case 0:
           handlePayment(cardData?.productId);
+          break;
+        case 1:
+          handleCompletePayment(cardData?.productId);
           break;
         default:
           break;
@@ -207,13 +201,6 @@ const SaleTransactions = ({
           />
         ))}
       </div>  
-      {showIncompletePaymentModal && (
-        <PaymentModeSelector
-          data={incompletePaymentData}
-          onComplete={handleCompletePayment}
-          onCancel={handleCancelPayment}
-        />
-      )}
     </div>
   );
 };

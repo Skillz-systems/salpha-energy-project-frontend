@@ -9,7 +9,6 @@ import {
 import { formatDateTime, formatNumberWithCommas } from "@/utils/helpers";
 import customericon from "../../assets/customers/customericon.svg";
 import creditcardicon from "../../assets/creditcardgrey.svg";
-import SaleDevices from "./SaleDevices";
 
 type InstallmentAccountDetails = {
   id: string;
