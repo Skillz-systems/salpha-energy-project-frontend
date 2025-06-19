@@ -123,7 +123,8 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           <div className="flex items-center justify-between">
             <Tag name="Total Installment Duration" />
             <p className="text-xs font-bold text-textDarkGrey">
-              {data.installmentData.totalInstallmentDuration} Months
+              <span>{data.installmentData.totalInstallmentDuration}</span>{" "}
+              Months
             </p>
           </div>
         </div>

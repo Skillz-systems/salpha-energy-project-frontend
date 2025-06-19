@@ -96,7 +96,7 @@ const SalesDetailsModal = ({
         totalPaid: data?.sale?.totalPaid || 0,
         totalMonthlyPayment: data?.sale?.totalMonthlyPayment || 0,
         installmentStartingPrice: data?.sale?.installmentStartingPrice || 0,
-        totalInstallmentDuration: data?.sale?.totalInstallmentDuration || 0,
+        totalInstallmentDuration: data?.installmentDuration || data?.sale?.installmentDuration || data?.sale?.totalInstallmentDuration || 0,
       },
       sale: data?.sale,
     };

@@ -4,12 +4,13 @@ import { toast } from "react-toastify";
 import { useCallback, useEffect, useState } from "react";
 import { usePaystack } from "@/utils/usePaystack";
 import { useApiCall } from "@/utils/useApiCall";
+import PaymentModeSelector from "./PaymentModeSelector";
 
 type PaymentInfo = {
   id: string;
   transactionRef: string;
   amount: number;
-  paymentStatus: "PENDING" | "COMPLETED";
+  paymentStatus: "PENDING" | "COMPLETED" | "INCOMPLETE";
   paymentDate: string;
   saleId: string;
   createdAt: string;
@@ -17,11 +18,12 @@ type PaymentInfo = {
   deletedAt: string | null;
 };
 
+
 interface PaymentVerificationResponse {
   status?: string;
   message?: string;
   jobId?: string;
-  paymentStatus?: "PENDING" | "COMPLETED";
+  paymentStatus?: "PENDING" | "COMPLETED" | "INCOMPLETE";
 }
 
 const public_key =
@@ -44,6 +46,22 @@ const SaleTransactions = ({
   const { apiCall } = useApiCall();
   const { isReady, error: paystackError, loading: paymentLoading, initializePayment } = usePaystack();
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [showIncompletePaymentModal, setShowIncompletePaymentModal] = useState(false);
+  const [incompletePaymentData, setIncompletePaymentData] = useState<any>(null);
+
+  const handleCompletePayment = () => {
+    setShowIncompletePaymentModal(false);
+    try {
+      const response =  apiCall({
+        endpoint: `/v1/payment/complete/${incompletePaymentData.id}`,
+        method: "post",
+        showToast: true,
+      });
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+    }
+  }
+  
 
   // Verify payment with backend
   const verifyPayment = async (reference: string) => {
@@ -61,11 +79,12 @@ const SaleTransactions = ({
       // Check for successful verification or processing status
       if (response?.data?.status === "success" || 
           response?.data?.status === "processing") {
+            
         // If payment status is COMPLETED, show success message
         if (response?.data?.paymentStatus === "COMPLETED") {
           toast.success("Payment completed successfully!");
-        } else {
-          toast.success(response?.data?.message || "Payment verification initiated successfully!");
+        } else if (response?.data?.paymentStatus === "INCOMPLETE") {
+          toast.warning("Payment is incomplete. Please complete the payment.");
         }
         
         // Refresh the page to show updated status
@@ -159,6 +178,7 @@ const SaleTransactions = ({
     showCustomButton: true,
   };
 
+  
   // Display error if any
   const displayError = paymentError || paystackError;
 
@@ -183,10 +203,17 @@ const SaleTransactions = ({
             productTag={item?.paymentMode}
             transactionAmount={item?.amount}
             dropDownList={dropDownList}
-            showDropdown={item?.paymentStatus === "COMPLETED" ? false : true}
+            showDropdown={item?.paymentStatus === "COMPLETED" || item?.paymentStatus === "INCOMPLETE" ? false : true}
           />
         ))}
-      </div>
+      </div>  
+      {showIncompletePaymentModal && (
+        <PaymentModeSelector
+          data={incompletePaymentData}
+          onComplete={handleCompletePayment}
+          onCancel={handleCancelPayment}
+        />
+      )}
     </div>
   );
 };
