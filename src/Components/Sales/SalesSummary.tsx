@@ -50,7 +50,7 @@ interface PaymentVerificationResponse {
   status?: string;
   message?: string;
   jobId?: string;
-  paymentStatus?: "PENDING" | "COMPLETED";
+  paymentStatus?: "PENDING" | "INCOMPLETE" | "COMPLETED";
   amount?: number;
 }
 
@@ -230,6 +230,10 @@ const SalesSummary = ({
           }
           
           toast.success((isInstallment || isPartialPayment) ? "Initial payment completed successfully!" : "Payment completed successfully!");
+        } else if (response?.data?.paymentStatus === "INCOMPLETE") {
+          toast.warning("Payment verification shows incomplete status. Please complete the payment.");
+        } else if (response?.data?.paymentStatus === "PENDING") {
+          toast.info("Payment is still pending verification. Please wait for confirmation.");
         } else {
           toast.success(response?.data?.message || "Payment verification initiated successfully!");
         }

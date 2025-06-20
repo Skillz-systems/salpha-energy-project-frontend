@@ -109,10 +109,11 @@ const SalesTable = ({
     },
     {
       title: "DATE CREATED",
-      key: "transactionDate",
+      key: "dateCreated",
       valueIsAComponent: true,
-      customValue: (value: string) => {
-        return <DateTimeTag datetime={value} showAll={false} />;
+      customValue: (value: string, rowData: SalesEntries) => {
+        const dateToShow = rowData.transactionDate || rowData.dateCreated || value;
+        return <DateTimeTag datetime={dateToShow} showAll={false} />;
       },
     },
     {
