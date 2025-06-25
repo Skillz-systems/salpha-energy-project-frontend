@@ -249,13 +249,13 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         <div className="flex items-center justify-between">
           <Tag name="Date Created" />
           <p className="text-xs font-bold text-textDarkGrey">
-            {formatDateTime("date", data.datetime)}
+            {formatDateTime("date", data.transactionDate)}
           </p>
         </div>
         <div className="flex items-center justify-between">
           <Tag name="Time Created" />
           <p className="text-xs font-bold text-textDarkGrey">
-            {formatDateTime("time", data.datetime)}
+            {formatDateTime("time", data.transactionDate)}
           </p>
         </div>
         <div className="flex items-center justify-between">

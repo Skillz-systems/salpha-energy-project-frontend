@@ -22,7 +22,7 @@ export type SaleDetailsType = {
   address: string;
   phone: string;
   email: string;
-  datetime: string;
+  transactionDate: string;
   agent: string;
   sale?: any;
   image: string;
@@ -92,7 +92,7 @@ const SalesDetailsModal = ({
       address: customerKey?.location || "",
       phone: customerKey?.phone || "",
       email: customerKey?.email || "",
-      datetime: data?.createdAt || "",
+      transactionDate: data?.sale?.transactionDate || data?.sale?.createdAt || data?.createdAt || "",
       agent: data?.agent || "N/A",
       image: data?.product?.image || "",
       productQuantity: data?.quantity || 0,
