@@ -10,7 +10,8 @@ import PageLayout from "./PageLayout";
 import salesbadge from "../assets/sales/salesbadge.png";
 import { TitlePill } from "@/Components/TitlePillComponent/TitlePill";
 import ActionButton from "@/Components/ActionButtonComponent/ActionButton";
-import { DropDown } from "@/Components/DropDownComponent/DropDown"; 
+import { DropDown } from "@/Components/DropDownComponent/DropDown";
+
 import circleAction from "../assets/settings/addCircle.svg";
 import gradientsales from "../assets/sales/gradientsales.svg";
 import Green from "../assets/sales/Green.png";
@@ -22,6 +23,7 @@ import { useGetRequest, useApiCall } from "@/utils/useApiCall";
 import { observer } from "mobx-react-lite";
 import { SaleStore } from "@/stores/SaleStore";
 import BatchUploadSales from "@/Components/Sales/BatchUploadSales";
+import ExportSalesModal from "@/Components/Sales/ExportSalesModal";
 
 const SalesTable = lazy(() => import("@/Components/Sales/SalesTable"));
 
@@ -36,8 +38,9 @@ const Sales = observer(() => {
     string,
     any
   > | null>({});
-  
+
   const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
   const queryString = Object.entries(tableQueryParams || {})
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
@@ -50,7 +53,8 @@ const Sales = observer(() => {
     error: allSalesError,
     errorStates: allSalesErrorStates,
   } = useGetRequest(
-    `/v1/sales?page=${currentPage}&limit=${entriesPerPage}${queryString && `&${queryString}`
+    `/v1/sales?page=${currentPage}&limit=${entriesPerPage}${
+      queryString && `&${queryString}`
     }`,
     true,
     60000
@@ -120,11 +124,14 @@ const Sales = observer(() => {
   ];
 
   const dropDownList = {
-    items: ["Batch Upload Sales"],  // Changed to be sales-specific
+    items: ["Batch Upload Sales", "Export Data"],
     onClickLink: (index: number) => {
       switch (index) {
         case 0:
           setIsBatchOpen(true);
+          break;
+        case 1:
+          setIsExportOpen(true);
           break;
         default:
           break;
@@ -243,6 +250,8 @@ const Sales = observer(() => {
         setIsOpen={setIsBatchOpen}
         allSalesRefresh={allSalesRefresh}
       />
+
+      <ExportSalesModal isOpen={isExportOpen} setIsOpen={setIsExportOpen} />
     </>
   );
 });
