@@ -186,6 +186,16 @@ const CreateNewCustomer = ({
             required={true}
             errorMessage={getFieldError("phone")}
           />
+          {/* <Input
+            type="text"
+            name="location"
+            label="Location"
+            value={formData.location}
+            onChange={handleInputChange}
+            placeholder="Enter location"
+            required={true}
+            errorMessage={getFieldError("location")}
+          /> */}
           <GooglePlacesInput
             type="text"
             name="location"

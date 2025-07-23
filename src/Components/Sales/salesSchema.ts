@@ -17,6 +17,13 @@ export const identificationDetailsSchema = z
       .string()
       .trim()
       .nonempty({ message: "Issue date is required" })
+      .transform((date) => {
+        // Handle ISO date strings by extracting just the date part
+        if (date.includes('T')) {
+          return date.split('T')[0];
+        }
+        return date;
+      })
       .refine((date) => !isNaN(Date.parse(date)), {
         message: "Invalid issue date",
       })
@@ -28,6 +35,13 @@ export const identificationDetailsSchema = z
       .string()
       .trim()
       .nonempty({ message: "Expiration date is required" })
+      .transform((date) => {
+        // Handle ISO date strings by extracting just the date part
+        if (date.includes('T')) {
+          return date.split('T')[0];
+        }
+        return date;
+      })
       .refine((date) => !isNaN(Date.parse(date)), {
         message: "Invalid expiration date",
       })
@@ -61,7 +75,14 @@ export const nextOfKinDetailsSchema = z.object({
   dateOfBirth: z
     .string()
     .trim()
-    .nonempty({ message: "Issue date is required" })
+    .nonempty({ message: "Date of birth is required" })
+    .transform((date) => {
+      // Handle ISO date strings by extracting just the date part
+      if (date.includes('T')) {
+        return date.split('T')[0];
+      }
+      return date;
+    })
     .refine((date) => !isNaN(Date.parse(date)), {
       message: "Invalid date of birth",
     })
@@ -79,7 +100,14 @@ export const guarantorDetailsSchema = z.object({
   dateOfBirth: z
     .string()
     .trim()
-    .nonempty({ message: "Issue date is required" })
+    .nonempty({ message: "Date of birth is required" })
+    .transform((date) => {
+      // Handle ISO date strings by extracting just the date part
+      if (date.includes('T')) {
+        return date.split('T')[0];
+      }
+      return date;
+    })
     .refine((date) => !isNaN(Date.parse(date)), {
       message: "Invalid date of birth",
     })
@@ -127,6 +155,112 @@ export const saleItemSchema = z
     }
   });
 
+export type SaleItem = {
+  productId: string;
+  quantity: number;
+  paymentMode: "INSTALLMENT" | "ONE_OFF";
+  discount?: number;
+  installmentDuration?: number;
+  installmentStartingPrice?: number;
+  devices: string[];
+  miscellaneousPrices?: {
+    [key: string]: number;
+  };
+  saleRecipient: {
+    firstname: string;
+    lastname: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
+};
+
+type NextOfKinDetails = {
+  fullName: string;
+  relationship: string;
+  phoneNumber: string;
+  email: string;
+  homeAddress: string;
+  dateOfBirth: string;
+  nationality: string;
+};
+
+type IdentificationDetails = {
+  idType: string;
+  idNumber: string;
+  issuingCountry: string;
+  issueDate: string;
+  expirationDate: string;
+  fullNameAsOnID: string;
+  addressAsOnID: string;
+};
+
+type GuarantorDetails = {
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  homeAddress: string;
+  identificationDetails: IdentificationDetails;
+  dateOfBirth: string;
+  nationality: string;
+};
+
+export type SalePayload = {
+  category: "PRODUCT";
+  customerId: string;
+  bvn?: string;
+  saleItems: SaleItem[];
+  nextOfKinDetails?: NextOfKinDetails;
+  identificationDetails?: IdentificationDetails;
+  guarantorDetails?: GuarantorDetails;
+  applyMargin: boolean;
+  paymentMethod: "ONLINE" | "CASH";
+};
+
+export const defaultSaleFormData: SalePayload = {
+  category: "PRODUCT",
+  customerId: "",
+  applyMargin: true,
+  bvn: "",
+  saleItems: [],
+  nextOfKinDetails: {
+    fullName: "",
+    relationship: "",
+    phoneNumber: "",
+    email: "",
+    homeAddress: "",
+    dateOfBirth: "",
+    nationality: "",
+  },
+  identificationDetails: {
+    idType: "",
+    idNumber: "",
+    issuingCountry: "",
+    issueDate: "",
+    expirationDate: "",
+    fullNameAsOnID: "",
+    addressAsOnID: "",
+  },
+  guarantorDetails: {
+    fullName: "",
+    phoneNumber: "",
+    email: "",
+    homeAddress: "",
+    dateOfBirth: "",
+    nationality: "",
+    identificationDetails: {
+      idType: "",
+      idNumber: "",
+      issuingCountry: "",
+      issueDate: "",
+      expirationDate: "",
+      fullNameAsOnID: "",
+      addressAsOnID: "",
+    },
+  },
+  paymentMethod: "ONLINE",
+};
+
 export const formSchema = z
   .object({
     category: z.enum(["PRODUCT"], {
@@ -136,15 +270,19 @@ export const formSchema = z
     saleItems: z
       .array(saleItemSchema)
       .min(1, "At least one sale item is required"),
-    bvn: z
+     bvn: z
       .string()
-      .length(11, "BVN must be exactly 11 digits")
-      .regex(/^\d+$/, "BVN must contain only numbers")
-      .optional(),
+      .optional()
+      .refine((val) => !val || val.length === 0 || (val.length === 11 && /^\d+$/.test(val)), {
+        message: "BVN must be exactly 11 digits when provided"
+      }),
     identificationDetails: identificationDetailsSchema.optional(),
     nextOfKinDetails: nextOfKinDetailsSchema.optional(),
     guarantorDetails: guarantorDetailsSchema.optional(),
     applyMargin: z.boolean().default(true),
+    paymentMethod: z.enum(["ONLINE", "CASH"], {
+      message: "Payment method is required",
+    }),
   })
   .superRefine((data, ctx) => {
     // Check if any sale item has paymentMode as "INSTALLMENT"
@@ -152,8 +290,17 @@ export const formSchema = z
       (item) => item.paymentMode === "INSTALLMENT"
     );
 
-    // If any sale item has paymentMode as "INSTALLMENT", enforce identificationDetails, nextOfKinDetails and guarantorDetails
+    // If any sale item has paymentMode as "INSTALLMENT", enforce BVN, identificationDetails, nextOfKinDetails and guarantorDetails
     if (hasInstallment) {
+      // Validate BVN - check for undefined, empty string, or whitespace-only string
+      if (!data.bvn || data.bvn.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "BVN is required for installment payments",
+          path: ["bvn"],
+        });
+      }
+
       // Validate identificationDetails
       if (!data.identificationDetails) {
         ctx.addIssue({
@@ -222,107 +369,3 @@ export const formSchema = z
       }
     }
   });
-
-export type SaleItem = {
-  productId: string;
-  quantity: number;
-  paymentMode: "INSTALLMENT" | "ONE_OFF";
-  discount?: number;
-  installmentDuration?: number;
-  installmentStartingPrice?: number;
-  devices: string[];
-  miscellaneousPrices?: {
-    [key: string]: number;
-  };
-  saleRecipient: {
-    firstname: string;
-    lastname: string;
-    address: string;
-    phone: string;
-    email: string;
-  };
-};
-
-type NextOfKinDetails = {
-  fullName: string;
-  relationship: string;
-  phoneNumber: string;
-  email: string;
-  homeAddress: string;
-  dateOfBirth: string;
-  nationality: string;
-};
-
-type IdentificationDetails = {
-  idType: string;
-  idNumber: string;
-  issuingCountry: string;
-  issueDate: string;
-  expirationDate: string;
-  fullNameAsOnID: string;
-  addressAsOnID: string;
-};
-
-type GuarantorDetails = {
-  fullName: string;
-  phoneNumber: string;
-  email: string;
-  homeAddress: string;
-  identificationDetails: IdentificationDetails;
-  dateOfBirth: string;
-  nationality: string;
-};
-
-export type SalePayload = {
-  category: "PRODUCT";
-  customerId: string;
-  bvn?: string;
-  saleItems: SaleItem[];
-  nextOfKinDetails?: NextOfKinDetails;
-  identificationDetails?: IdentificationDetails;
-  guarantorDetails?: GuarantorDetails;
-  applyMargin: boolean;
-};
-
-export const defaultSaleFormData: SalePayload = {
-  category: "PRODUCT",
-  customerId: "",
-  applyMargin: true,
-  bvn: "",
-  saleItems: [],
-  nextOfKinDetails: {
-    fullName: "",
-    relationship: "",
-    phoneNumber: "",
-    email: "",
-    homeAddress: "",
-    dateOfBirth: "",
-    nationality: "",
-  },
-  identificationDetails: {
-    idType: "",
-    idNumber: "",
-    issuingCountry: "",
-    issueDate: "",
-    expirationDate: "",
-    fullNameAsOnID: "",
-    addressAsOnID: "",
-  },
-  guarantorDetails: {
-    fullName: "",
-    phoneNumber: "",
-    email: "",
-    homeAddress: "",
-    dateOfBirth: "",
-    nationality: "",
-    identificationDetails: {
-      idType: "",
-      idNumber: "",
-      issuingCountry: "",
-      issueDate: "",
-      expirationDate: "",
-      fullNameAsOnID: "",
-      addressAsOnID: "",
-    },
-  },
-};

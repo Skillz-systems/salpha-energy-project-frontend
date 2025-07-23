@@ -31,7 +31,7 @@ const GuarantorForm = ({ handleClose }: { handleClose: () => void }) => {
   const savedData = SaleStore.guarantorDetails || defaultFormData;
   const [formData, setFormData] = useState<FormData>({
     ...savedData,
-    dateOfBirth: savedData.dateOfBirth,
+    dateOfBirth: formatDateForInput(savedData.dateOfBirth),
     identificationDetails: {
       ...savedData.identificationDetails,
       issueDate: formatDateForInput(savedData.identificationDetails.issueDate),

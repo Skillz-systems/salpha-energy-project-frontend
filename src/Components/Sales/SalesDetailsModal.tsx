@@ -18,14 +18,21 @@ export type SaleDetailsType = {
   saleId: string;
   productName: string;
   customer: string;
+  customerId: string;
   address: string;
   phone: string;
   email: string;
-  datetime: string;
+  transactionDate: string;
   agent: string;
   sale?: any;
   image: string;
   productQuantity: string;
+  latitude?: string;
+  longitude?: string;
+  devices?: Array<{
+    id: string;
+    serialNumber: string;
+  }>;
   installmentData: {
     totalPrice: number;
     totalPaid: number;
@@ -37,7 +44,7 @@ export type SaleDetailsType = {
 
 export type SaleTransactionsType = {
   transactionId: string;
-  paymentStatus: string;
+  paymentStatus: "PENDING" | "INCOMPLETE" | "COMPLETED";
   datetime: string;
   productCategory: string;
   paymentMode: string;
@@ -56,6 +63,9 @@ const SalesDetailsModal = ({
   const [tabContent, setTabContent] = useState<string>("details");
 
   const fetchSingleSale = useGetRequest(`/v1/sales/${salesID}`, false);
+
+  // Debug logging to track data fetching
+  console.log(`Fetching sales data for ID: ${salesID}`, fetchSingleSale?.data);
 
   const fetchProductCategories = useGetRequest(
     `/v1/products/categories/all`,
@@ -78,19 +88,26 @@ const SalesDetailsModal = ({
       saleId: data?.id || "",
       productName: data?.product?.name || "",
       customer: customerName,
+      customerId: customerKey?.id || "",
       address: customerKey?.location || "",
       phone: customerKey?.phone || "",
       email: customerKey?.email || "",
-      datetime: data?.createdAt || "",
+      transactionDate: data?.sale?.transactionDate || data?.sale?.createdAt || data?.createdAt || "",
       agent: data?.agent || "N/A",
       image: data?.product?.image || "",
       productQuantity: data?.quantity || 0,
+      latitude: customerKey?.latitude || "",
+      longitude: customerKey?.longitude || "",
+      devices: data?.devices?.map((device: any) => ({
+        id: device.id,
+        serialNumber: device.serialNumber,
+      })) || [],
       installmentData: {
         totalPrice: data?.sale?.totalPrice || 0,
         totalPaid: data?.sale?.totalPaid || 0,
         totalMonthlyPayment: data?.sale?.totalMonthlyPayment || 0,
         installmentStartingPrice: data?.sale?.installmentStartingPrice || 0,
-        totalInstallmentDuration: data?.sale?.totalInstallmentDuration || 0,
+        totalInstallmentDuration: data?.installmentDuration || data?.sale?.installmentDuration || data?.sale?.totalInstallmentDuration || 0,
       },
       sale: data?.sale,
     };
@@ -100,15 +117,40 @@ const SalesDetailsModal = ({
 
   const generateSaleTransactionEntries = () => {
     const data = fetchSingleSale?.data;
+    
+    // Calculate payment completion status for installments based on payment count
+    const isInstallment = data?.paymentMode === "INSTALLMENT";
+    const totalInstallments = data?.installmentDuration || data?.sale?.installmentDuration || data?.sale?.totalInstallmentDuration || 0;
+    const paymentsMade = data?.sale?.payment.map((p: { id: any }) => p?.id).length || 0;
+    const isFullyPaid = isInstallment ? (paymentsMade >= totalInstallments) : false;
+    
     const entries = data?.sale?.payment.map(
-      (p: { id: any; paymentStatus: any; paymentDate: any; amount: any }) => ({
-        transactionId: p?.id,
-        paymentStatus: p?.paymentStatus,
-        datetime: p?.paymentDate,
-        productCategory: data?.sale?.category,
-        paymentMode: data?.paymentMode,
-        amount: p?.amount,
-      })
+      (p: { id: any; paymentStatus: any; paymentDate: any; amount: any }) => {
+        let correctedPaymentStatus = p?.paymentStatus;
+        
+        // Debug logging to track payment amounts
+        console.log(`Payment ID: ${p?.id}, Amount from backend: ${p?.amount}, Status: ${p?.paymentStatus}`);
+        
+        // For installment payments, check if all required installments have been made
+        if (isInstallment) {
+          if (isFullyPaid) {
+            // If all installments are complete, mark the latest payment as COMPLETED
+            correctedPaymentStatus = "COMPLETED";
+          } else if (p?.paymentStatus === "COMPLETED") {
+            // If not all installments are complete, mark individual payments as INCOMPLETE
+            correctedPaymentStatus = "INCOMPLETE";
+          }
+        }
+
+        return {
+          transactionId: p?.id,
+          paymentStatus: correctedPaymentStatus,
+          datetime: p?.paymentDate,
+          productCategory: data?.sale?.category,
+          paymentMode: data?.paymentMode,
+          amount: p?.amount, // This should be the actual amount paid by the user
+        };
+      }
     );
 
     const customerKey = data?.sale?.customer;
@@ -210,7 +252,16 @@ const SalesDetailsModal = ({
             ) : tabContent === "devices" ? (
               <SaleDevices data={fetchSingleSale?.data?.devices} />
             ) : (
-              <SaleTransactions data={generateSaleTransactionEntries()} />
+              <SaleTransactions 
+                data={generateSaleTransactionEntries()} 
+                saleData={{
+                  totalPrice: data?.installmentData?.totalPrice || 0,
+                  totalPaid: data?.installmentData?.totalPaid || 0,
+                  paymentMode: data?.paymentMode || "ONE_OFF",
+                  totalInstallments: data?.installmentData?.totalInstallmentDuration || 0,
+                  paymentsMade: fetchSingleSale?.data?.sale?.payment?.length || 0
+                }}
+              />
             )}
           </DataStateWrapper>
         </div>

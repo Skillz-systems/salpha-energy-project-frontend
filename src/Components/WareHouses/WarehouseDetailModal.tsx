@@ -2,6 +2,8 @@ import React from "react";
 import { useGetRequest } from "@/utils/useApiCall";
 import { Modal } from "../ModalComponent/Modal";
 import LoadingSpinner from "../Loaders/LoadingSpinner";
+import { formatNumberWithCommas } from "@/utils/helpers";
+import { NairaSymbol } from "../CardComponents/CardComponent";
 
 interface WarehouseDetailModalProps {
   isOpen: boolean;
@@ -16,12 +18,28 @@ const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
   warehouseID,
   refreshTable
 }) => {
-  const { data: warehouseDetail, isLoading } = useGetRequest(
+  const { data: warehouseDetail, isLoading: warehouseLoading } = useGetRequest(
     `/v1/warehouses/${warehouseID}`,
     !!warehouseID && isOpen
   );
 
+  const { data: inventoryStats, isLoading: statsLoading } = useGetRequest(
+    `/v1/inventory/stats?warehouseId=${warehouseID}`,
+    !!warehouseID && isOpen
+  );
+
   const warehouse = warehouseDetail?.data;
+  const stats = inventoryStats?.data;
+
+  // Calculate the total inventory value
+  const totalInventoryValue = stats?.totalInventoryValue || 
+                             stats?.totalValue ||
+                             warehouse?.totalInventoryValue ||
+                             warehouse?.inventoryValue ||
+                             warehouse?.totalValue || 
+                             warehouse?.value || 0;
+
+  const isLoading = warehouseLoading || statsLoading;
 
   return (
     <Modal
@@ -45,7 +63,14 @@ const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
                 ? warehouse.inventoryClasses.join(", ") 
                 : warehouse.inventoryClasses || "N/A"
             }</li>
-            <li><strong>Total Value:</strong> ₦{warehouse.totalValue || warehouse.value || 0}</li>
+            <li><strong>Total Inventory Count:</strong> {stats?.totalInventoryCount || 0}</li>
+            <li>
+              <strong>Total Inventory Worth:</strong> 
+              <span className="flex items-center gap-1 ml-2">
+                <NairaSymbol />
+                {formatNumberWithCommas(totalInventoryValue)}
+              </span>
+            </li>
           </ul>
         ) : (
           <p className="text-gray-500">No warehouse details found.</p>

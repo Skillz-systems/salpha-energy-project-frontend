@@ -18,6 +18,7 @@ type SalesEntries = {
   paymentMode: string;
   dateCreated: string;
   customer: string;
+  transactionDate: string;
   status: string;
   amount: number;
 };
@@ -37,6 +38,7 @@ const generateSalesEntries = (data: any): SalesEntries[] => {
             : item?.paymentMode,
         dateCreated: item?.createdAt,
         customer: customerName,
+        transactionDate: item?.sale?.transactionDate,
         status: item?.sale?.status,
         amount: item?.sale?.totalPrice,
       };
@@ -109,8 +111,9 @@ const SalesTable = ({
       title: "DATE CREATED",
       key: "dateCreated",
       valueIsAComponent: true,
-      customValue: (value: string) => {
-        return <DateTimeTag datetime={value} showAll={false} />;
+      customValue: (value: string, rowData: SalesEntries) => {
+        const dateToShow = rowData.transactionDate || rowData.dateCreated || value;
+        return <DateTimeTag datetime={dateToShow} showAll={false} />;
       },
     },
     {

@@ -3,6 +3,7 @@ export interface TicketData {
   category: string;
   priority: "low" | "medium" | "high";
   description: string;
+  type?: string;
 }
 
 export interface Ticket extends TicketData {
@@ -11,6 +12,8 @@ export interface Ticket extends TicketData {
   createdAt: string;
   updatedAt?: string;
   comments?: Comment[];
+  assignee?: string;
+  type?: string;
 }
 
 export interface Comment {

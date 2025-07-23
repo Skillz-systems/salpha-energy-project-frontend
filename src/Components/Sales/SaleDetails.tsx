@@ -75,6 +75,26 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         </div>
       </div>
 
+      {data.devices && data.devices.length > 0 && (
+        <div className="flex flex-col p-2.5 gap-2 bg-white border-[0.6px] border-strokeGreyThree rounded-[20px]">
+          <p className="flex gap-1 w-max text-textLightGrey text-xs font-medium pb-2">
+            <img src={producticon} alt="Product Icon" /> DEVICES
+          </p>
+          {data.devices.map((device) => (
+            <div key={device.id} className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Tag name="Device ID" />
+                <p className="text-xs font-bold text-textDarkGrey">{device.id}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <Tag name="Serial Number" />
+                <p className="text-xs font-bold text-textDarkGrey">{device.serialNumber}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {data?.paymentMode === "INSTALLMENT" && (
         <div className="flex flex-col p-2.5 gap-2 bg-white border-[0.6px] border-strokeGreyThree rounded-[20px]">
           <p className="flex gap-1 w-max text-textLightGrey text-xs font-medium pb-2">
@@ -123,7 +143,8 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           <div className="flex items-center justify-between">
             <Tag name="Total Installment Duration" />
             <p className="text-xs font-bold text-textDarkGrey">
-              {data.installmentData.totalInstallmentDuration} Months
+              <span>{data.installmentData.totalInstallmentDuration}</span>{" "}
+              Months
             </p>
           </div>
         </div>
@@ -192,6 +213,10 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           <p className="text-xs font-bold text-textDarkGrey">{data.customer}</p>
         </div>
         <div className="flex items-center justify-between">
+          <Tag name="Customer ID" />
+          <p className="text-xs font-bold text-textDarkGrey">{data.customerId}</p>
+        </div>
+        <div className="flex items-center justify-between">
           <Tag name="Installation Address" />
           <p className="text-xs font-bold text-textDarkGrey">{data.address}</p>
         </div>
@@ -203,6 +228,18 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
           <Tag name="Email Address" />
           <p className="text-xs font-bold text-textDarkGrey">{data.email}</p>
         </div>
+        <div className="flex items-center justify-between">
+          <Tag name="Longitude" />
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.longitude || "N/A"}
+          </p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="Latitude" />
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.latitude || "N/A"}
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col p-2.5 gap-2 bg-white border-[0.6px] border-strokeGreyThree rounded-[20px]">
@@ -212,13 +249,13 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         <div className="flex items-center justify-between">
           <Tag name="Date Created" />
           <p className="text-xs font-bold text-textDarkGrey">
-            {formatDateTime("date", data.datetime)}
+            {formatDateTime("date", data.transactionDate)}
           </p>
         </div>
         <div className="flex items-center justify-between">
           <Tag name="Time Created" />
           <p className="text-xs font-bold text-textDarkGrey">
-            {formatDateTime("time", data.datetime)}
+            {formatDateTime("time", data.transactionDate)}
           </p>
         </div>
         <div className="flex items-center justify-between">
