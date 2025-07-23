@@ -114,12 +114,14 @@ const Sales = observer(() => {
     {
       title: "In Installment",
       link: "/sales/in installment",
-      count: salesData?.total || 0,
+      // count: salesData?.total || 0,
+      count: 0,
     },
     {
       title: "Closed",
       link: "/sales/closed",
-      count: salesData?.total || 0,
+      // count: salesData?.total || 0,
+      count: 0,
     },
   ];
 
@@ -190,7 +192,8 @@ const Sales = observer(() => {
               iconBgColor="bg-[#FDEEC2]"
               topText="CANCELLED"
               bottomText="SALES"
-              value={salesData?.total}
+              // value={salesData?.total}
+              value={0}
             />
           </div>
           <div className="flex w-full items-center justify-between gap-2 min-w-max sm:w-max sm:justify-end">
