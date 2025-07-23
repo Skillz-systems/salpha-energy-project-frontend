@@ -84,11 +84,15 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
             <div key={device.id} className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Tag name="Device ID" />
-                <p className="text-xs font-bold text-textDarkGrey">{device.id}</p>
+                <p className="text-xs font-bold text-textDarkGrey">
+                  {device.id}
+                </p>
               </div>
               <div className="flex items-center justify-between">
                 <Tag name="Serial Number" />
-                <p className="text-xs font-bold text-textDarkGrey">{device.serialNumber}</p>
+                <p className="text-xs font-bold text-textDarkGrey">
+                  {device.serialNumber}
+                </p>
               </div>
             </div>
           ))}
@@ -214,7 +218,9 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         </div>
         <div className="flex items-center justify-between">
           <Tag name="Customer ID" />
-          <p className="text-xs font-bold text-textDarkGrey">{data.customerId}</p>
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.customerId}
+          </p>
         </div>
         <div className="flex items-center justify-between">
           <Tag name="Installation Address" />
@@ -227,6 +233,20 @@ const SaleDetails = ({ data }: { data: SaleDetailsType }) => {
         <div className="flex items-center justify-between">
           <Tag name="Email Address" />
           <p className="text-xs font-bold text-textDarkGrey">{data.email}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="LGA" />
+          <p className="text-xs font-bold text-textDarkGrey">{data.lga}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="State" />
+          <p className="text-xs font-bold text-textDarkGrey">{data.state}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <Tag name="Category" />
+          <p className="text-xs font-bold text-textDarkGrey">
+            {data.customerCategory}
+          </p>
         </div>
         <div className="flex items-center justify-between">
           <Tag name="Longitude" />
