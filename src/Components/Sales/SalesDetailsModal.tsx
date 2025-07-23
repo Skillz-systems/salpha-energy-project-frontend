@@ -24,6 +24,9 @@ export type SaleDetailsType = {
   email: string;
   transactionDate: string;
   agent: string;
+  state?: string,
+  lga?: string,
+  customerCategory?: string,
   sale?: any;
   image: string;
   productQuantity: string;
@@ -89,25 +92,37 @@ const SalesDetailsModal = ({
       productName: data?.product?.name || "",
       customer: customerName,
       customerId: customerKey?.id || "",
+      state: customerKey?.state || "",
+      lga: customerKey?.lga || "",
+      customerCategory: customerKey?.customerCategory || "",
       address: customerKey?.location || "",
       phone: customerKey?.phone || "",
       email: customerKey?.email || "",
-      transactionDate: data?.sale?.transactionDate || data?.sale?.createdAt || data?.createdAt || "",
+      transactionDate:
+        data?.sale?.transactionDate ||
+        data?.sale?.createdAt ||
+        data?.createdAt ||
+        "",
       agent: data?.agent || "N/A",
       image: data?.product?.image || "",
       productQuantity: data?.quantity || 0,
       latitude: customerKey?.latitude || "",
       longitude: customerKey?.longitude || "",
-      devices: data?.devices?.map((device: any) => ({
-        id: device.id,
-        serialNumber: device.serialNumber,
-      })) || [],
+      devices:
+        data?.devices?.map((device: any) => ({
+          id: device.id,
+          serialNumber: device.serialNumber,
+        })) || [],
       installmentData: {
         totalPrice: data?.sale?.totalPrice || 0,
         totalPaid: data?.sale?.totalPaid || 0,
         totalMonthlyPayment: data?.sale?.totalMonthlyPayment || 0,
         installmentStartingPrice: data?.sale?.installmentStartingPrice || 0,
-        totalInstallmentDuration: data?.installmentDuration || data?.sale?.installmentDuration || data?.sale?.totalInstallmentDuration || 0,
+        totalInstallmentDuration:
+          data?.installmentDuration ||
+          data?.sale?.installmentDuration ||
+          data?.sale?.totalInstallmentDuration ||
+          0,
       },
       sale: data?.sale,
     };
